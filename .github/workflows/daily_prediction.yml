@@ -1,37 +1,34 @@
-name: NOROSHI Daily Prediction #KGNINJA
+yamlname: Daily Stock Prediction
 
 on:
   schedule:
-    - cron: "0 1 * * *"
+    - cron: '0 9 * * 1-5'  # 平日9時に実行
   workflow_dispatch:
 
 jobs:
-  run:
+  predict:
     runs-on: ubuntu-latest
+    
     steps:
-    - uses: actions/checkout@v4
-
-    - name: Setup Python
-      uses: actions/setup-python@v5
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
       with:
-        python-version: "3.10"
-
-    - name: Install deps
-      run: pip install -r requirements.txt
-
-    - name: Run predictions #KGNINJA
-      run: python simple_daily_prediction.py
-
-    - name: Generate charts #KGNINJA
-      run: python scripts/generate_charts.py
-
-    - name: Update README #KGNINJA
-      run: python scripts/generate_readme.py
-
-    - name: Commit & Push #KGNINJA
+        python-version: '3.10'
+    
+    - name: Install dependencies
       run: |
-        git config --local user.email "actions@github.com"
-        git config --local user.name "github-actions"
-        git add .
-        git commit -m "[auto] NOROSHI update #KGNINJA" || echo "No changes"
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Run prediction
+      run: python simple_daily_prediction.py
+    
+    - name: Commit and push results
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add -A
+        git commit -m "Update predictions: $(date)" || echo "No changes to commit"
         git push
