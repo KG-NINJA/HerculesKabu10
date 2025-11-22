@@ -2,7 +2,7 @@ name: Daily Stock Prediction
 
 on:
   schedule:
-    - cron: '0 9 * * 1-5'  # 平日9時に実行
+    - cron: '0 9 * * 1-5'
   workflow_dispatch:
 
 jobs:
@@ -24,6 +24,8 @@ jobs:
     
     - name: Run prediction
       run: python simple_daily_prediction.py
+      env:
+        PYTHONUNBUFFERED: 1
     
     - name: Commit and push results
       run: |
