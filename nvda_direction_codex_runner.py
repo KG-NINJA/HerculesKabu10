@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""NVDA向けCONFIG評価ランナー + 自動JSONログ保存"""
+"""NVDA向けCONFIG評価ランナー（GitHub Actions対応版）"""
 
 from __future__ import annotations
 import json
@@ -12,43 +12,38 @@ from datetime import datetime
 # === CONFIG ===
 CONFIG: Dict[str, Any] = {
     "target_ticker": "NVDA",
+
+    # GitHub Actions では continuous_*** のフォルダが存在しないため
+    # すべて logs/ に統一して "cv_run_*.json" を取得する形へ変更
     "cv_sources": [
         {
-            "name": "continuous_registry",
-            "type": "registry",
-            "path": "continuous_models/model_registry.json",
-            "weight": 0.35,
-        },
-        {
-            "name": "stable_registry",
-            "type": "registry",
-            "path": "stable_continuous_models/model_registry.json",
-            "weight": 0.35,
-        },
-        {
-            "name": "recent_validation",
+            "name": "cv_runs",
             "type": "validation",
-            "directory": "validation_results",
-            "weight": 0.30,
-            "max_files": 4,
+            "directory": "logs",
+            "weight": 1.0,
+            "max_files": 10,
         },
     ],
+
     "confidence_weights": {
         "cv": 0.5,
         "mape": 0.2,
         "signal": 0.3,
     },
+
     "signal_rule": {
         "predictions_file": "daily_predictions/latest_predictions.json",
         "change_scale_pct": 5.0,
         "buy_threshold_pct": 1.0,
         "sell_threshold_pct": -1.0,
     },
+
     "required": {
         "cv_average": 60.0,
         "high_confidence": 65.0,
     },
 }
+
 
 # === データ構造 ===
 @dataclass
@@ -62,50 +57,55 @@ class CVComponent:
 def load_json(path: Path) -> Optional[Any]:
     if not path.exists():
         return None
-    with path.open("r", encoding="utf-8") as handle:
-        return json.load(handle)
-
-
-def gather_registry_score(project_root: Path, source: Dict[str, Any], ticker: str) -> Optional[CVComponent]:
-    data = load_json(project_root / source["path"])
-    if not data or ticker not in data:
+    try:
+        with path.open("r", encoding="utf-8") as handle:
+            return json.load(handle)
+    except Exception:
         return None
-    accuracy = data[ticker].get("last_accuracy", {}).get("direction_accuracy")
-    if accuracy is None:
-        return None
-    return CVComponent(name=source["name"], score=float(accuracy), weight=float(source["weight"]))
 
 
 def gather_validation_component(project_root: Path, source: Dict[str, Any], ticker: str) -> Tuple[Optional[CVComponent], Optional[float]]:
-    directory = project_root / source.get("directory", "validation_results")
-    pattern = f"validation_{ticker}_"
+    directory = project_root / source.get("directory", "logs")
+    if not directory.exists():
+        return (None, None)
+
+    pattern = f"cv_run_"
     files = sorted(
         [p for p in directory.glob("*.json") if p.name.startswith(pattern)],
         key=lambda p: p.stat().st_mtime,
         reverse=True,
     )
+
     selected = files[: int(source.get("max_files", 3))]
     if not selected:
         return (None, None)
 
     cv_scores, mapes = [], []
+
     for path in selected:
         payload = load_json(path)
         if not payload:
             continue
-        metrics = payload.get("metrics", {})
-        mape = metrics.get("mape")
-        if mape is None:
+
+        # cv_average そのものを読む
+        score = payload.get("cv_average")
+        if score is None:
             continue
-        mapes.append(float(mape))
-        cv_scores.append(max(0.0, 100.0 - float(mape)))
+
+        cv_scores.append(float(score))
+
+        # mape はない場合がある → デフォルト扱い
+        mape = 100 - float(score)
+        mapes.append(mape)
 
     if not cv_scores:
         return (None, None)
 
     avg_score = mean(cv_scores)
+    avg_mape = mean(mapes)
     component = CVComponent(source["name"], avg_score, float(source["weight"]))
-    return (component, mean(mapes))
+
+    return (component, avg_mape)
 
 
 def normalize_weights(components: List[CVComponent]) -> List[CVComponent]:
@@ -118,12 +118,13 @@ def normalize_weights(components: List[CVComponent]) -> List[CVComponent]:
 def calculate_signal(project_root: Path, cfg: Dict[str, Any], ticker: str) -> Dict[str, Any]:
     predictions_file = project_root / cfg["predictions_file"]
     payload = load_json(predictions_file) or {}
+
     markets = payload.get("markets", {})
     entries = []
-    for market_stocks in markets.values():
-        entries.extend(market_stocks)
+    for market in markets.values():
+        entries.extend(market)
 
-    entry = next((item for item in entries if item.get("ticker") == ticker), None)
+    entry = next((x for x in entries if x.get("ticker") == ticker), None)
     if not entry:
         return {"status": "missing"}
 
@@ -133,9 +134,9 @@ def calculate_signal(project_root: Path, cfg: Dict[str, Any], ticker: str) -> Di
     normalized = max(-1.0, min(1.0, change_pct / scale))
     strength_pct = (normalized + 1.0) / 2.0 * 100.0
 
-    if change_pct >= cfg.get("buy_threshold_pct", 1.0):
+    if change_pct >= cfg["buy_threshold_pct"]:
         signal = "BUY"
-    elif change_pct <= cfg.get("sell_threshold_pct", -1.0):
+    elif change_pct <= cfg["sell_threshold_pct"]:
         signal = "SELL"
     else:
         signal = "HOLD"
@@ -155,26 +156,23 @@ def print_section(title: str):
 
 # === メイン ===
 def main() -> None:
-    project_root = Path(__file__).resolve().parents[1]
+    # GitHub Actions ではこれが正しい
+    project_root = Path(__file__).resolve().parent
+
     ticker = CONFIG["target_ticker"]
 
     cv_components: List[CVComponent] = []
     validation_mape: Optional[float] = None
 
     for source in CONFIG["cv_sources"]:
-        if source["type"] == "registry":
-            c = gather_registry_score(project_root, source, ticker)
-            if c:
-                cv_components.append(c)
-        elif source["type"] == "validation":
-            c, m = gather_validation_component(project_root, source, ticker)
-            if c:
-                cv_components.append(c)
-            if m is not None:
-                validation_mape = m if validation_mape is None else (validation_mape + m) / 2
+        c, m = gather_validation_component(project_root, source, ticker)
+        if c:
+            cv_components.append(c)
+        if m is not None:
+            validation_mape = m if validation_mape is None else (validation_mape + m) / 2
 
     if not cv_components:
-        print("CV情報が見つかりません。CONFIGを確認。")
+        print("CV情報が見つかりません。（logs フォルダを確認してください）")
         return
 
     cv_components = normalize_weights(cv_components)
@@ -190,7 +188,7 @@ def main() -> None:
     mape_component = 100.0 - validation_mape if validation_mape is not None else 50.0
 
     conf_cfg = CONFIG["confidence_weights"]
-    conf_total = sum(conf_cfg.values()) or 1.0
+    conf_total = sum(conf_cfg.values())
     confidence = (
         cv_average * conf_cfg["cv"]
         + mape_component * conf_cfg["mape"]
@@ -198,14 +196,8 @@ def main() -> None:
     ) / conf_total
 
     print_section("Confidence & Signal")
-    print(f"- 平均MAPE: {validation_mape:.3f}% -> スコア {mape_component:.2f}%" if validation_mape else "- 検証MAPE: データなし (50%)")
-
-    if signal_info["status"] == "ok":
-        print(f"- 最新予測: {signal_info['predicted_change_pct']:+.2f}% / Trend {signal_info['trend']}")
-        print(f"- シグナル: {signal_info['signal']} (強度 {signal_strength:.1f}%)")
-    else:
-        print("- シグナル: データなし")
-
+    print(f"- 最新MAPEスコア: {mape_component:.2f}%")
+    print(f"- シグナル: {signal_info.get('signal')} (強度 {signal_strength:.1f}%)")
     print(f"\n=> 信頼スコア: {confidence:.2f}%")
 
     req = CONFIG["required"]
@@ -213,7 +205,6 @@ def main() -> None:
     print(f"- CV平均 >= {req['cv_average']}% : {'PASS' if cv_average >= req['cv_average'] else 'FAIL'}")
     print(f"- 高確信 >= {req['high_confidence']}% : {'PASS' if confidence >= req['high_confidence'] else 'FAIL'}")
 
-    # --- 自動ログ保存 ---
     save_run_log(cv_average, confidence, signal_info, signal_strength)
 
 
@@ -234,7 +225,7 @@ def save_run_log(cv_average=None, confidence=None, signal_info=None, signal_stre
     with open(log_path, "w", encoding="utf-8") as f:
         json.dump(log_entry, f, ensure_ascii=False, indent=2)
 
-    print(f"\n[ログ保存完了] {log_path}")
+    print(f"[ログ保存完了] {log_path}")
 
 
 if __name__ == "__main__":
