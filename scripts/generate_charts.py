@@ -40,7 +40,10 @@ def generate_nvda_chart(data: dict):
     nvda = load_nvda(data)
     chart_path = ANALYTICS_DIR / "nvda_prediction.png"
     plt.figure(figsize=(6, 4))
-    plt.title("NVDA Predicted vs Current #KGNINJA")
+
+    method = nvda.get("prediction_method", "unknown")
+    plt.title(f"NVDA Predicted vs Current ({method}) #KGNINJA")
+
     plt.bar(["Current", "Predicted"], [nvda["current_price"], nvda["predicted_price"]])
     plt.ylabel("USD")
     _save_chart(chart_path)
@@ -62,12 +65,44 @@ def generate_market_context_chart(data: dict):
     return chart_path
 
 
+
+def generate_feature_snapshot(data: dict):
+    nvda = load_nvda(data)
+    features = nvda.get("features", {})
+    if not features:
+        return None
+
+    selected = {
+        "ma5": features.get("ma5"),
+        "ma20": features.get("ma20"),
+        "ma50": features.get("ma50"),
+        "rsi14": features.get("rsi14"),
+        "macd": features.get("macd"),
+        "macd_hist": features.get("macd_hist"),
+    }
+
+    chart_path = ANALYTICS_DIR / "nvda_feature_snapshot.png"
+    plt.figure(figsize=(7, 4))
+    plt.title("NVDA Feature Snapshot #KGNINJA")
+    plt.bar(list(selected.keys()), list(selected.values()))
+    plt.ylabel("Value")
+    plt.xticks(rotation=30)
+    _save_chart(chart_path)
+    mirror = DOCS_ASSETS / chart_path.name
+    mirror.write_bytes(chart_path.read_bytes())
+    return chart_path
+
+
+
 def main():
     with open(PRED_FILE, "r", encoding="utf-8") as f:
         payload = json.load(f)
 
     generate_nvda_chart(payload)
     generate_market_context_chart(payload)
+
+    generate_feature_snapshot(payload)
+
 
     print("Charts generated. #KGNINJA")
 

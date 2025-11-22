@@ -32,7 +32,7 @@ CONFIG: Dict[str, Any] = {
     },
 
     "signal_rule": {
-        "predictions_file": "daily_predictions/latest_predictions.json",
+        "predictions_file": "data/daily_predictions/latest_predictions.json",
         "change_scale_pct": 5.0,
         "buy_threshold_pct": 1.0,
         "sell_threshold_pct": -1.0,
@@ -130,6 +130,7 @@ def calculate_signal(project_root: Path, cfg: Dict[str, Any], ticker: str) -> Di
 
     change_pct = float(entry.get("predicted_change_pct", 0.0))
     trend = entry.get("trend", "N/A")
+    method = entry.get("prediction_method", "unknown")
     scale = max(0.1, float(cfg.get("change_scale_pct", 5.0)))
     normalized = max(-1.0, min(1.0, change_pct / scale))
     strength_pct = (normalized + 1.0) / 2.0 * 100.0
@@ -145,6 +146,7 @@ def calculate_signal(project_root: Path, cfg: Dict[str, Any], ticker: str) -> Di
         "status": "ok",
         "predicted_change_pct": change_pct,
         "trend": trend,
+        "prediction_method": method,
         "signal": signal,
         "signal_strength": strength_pct,
     }
