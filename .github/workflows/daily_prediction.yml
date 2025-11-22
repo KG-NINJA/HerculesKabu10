@@ -34,11 +34,5 @@ jobs:
         git add -A
         git commit -m "Update predictions: $(date)" || echo "No changes to commit"
         git push
-```
-
-## requirements.txt
-```
-pandas==2.1.3
-numpy==1.24.3
 lightgbm==4.1.0
 scikit-learn==1.3.2
