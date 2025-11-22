@@ -1,7 +1,5 @@
-pandas
-matplotlib
 yfinance
+pandas
 numpy
-scipy
 lightgbm
-scikit-learn
+matplotlib
