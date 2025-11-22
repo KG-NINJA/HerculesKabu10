@@ -1,4 +1,4 @@
-name: NOROSHI Daily Prediction
+name: NOROSHI Daily Prediction #KGNINJA
 
 on:
   schedule:
@@ -9,32 +9,32 @@ permissions:
   contents: write
 
 jobs:
-  prediction:
+  run:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout #KGNINJA
-        uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-      - name: Set up Python #KGNINJA
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.10"
 
-      - name: Install deps #KGNINJA
-        run: |
+    - name: Install dependencies
+      run: pip install -r requirements.txt
 
-          python -m pip install --upgrade pip setuptools wheel
+    - name: Run LightGBM predictions
+      run: python simple_daily_prediction.py
 
-          pip install -r requirements.txt
+    - name: Generate charts
+      run: python scripts/generate_charts.py
 
-      - name: Run prediction #KGNINJA
-        run: python simple_daily_prediction.py
+    - name: Update README
+      run: python scripts/generate_readme.py
 
-      - name: Commit JSON #KGNINJA
-        run: |
-          git config --local user.email "actions@github.com"
-          git config --local user.name "github-actions"
-          git add data/daily_predictions/latest_predictions.json data/daily_predictions/.keep
-          git status --short
-          git commit -m "[auto] prediction json update #KGNINJA" || echo "No changes"
-          git push
+    - name: Commit and push
+      run: |
+        git config --local user.email "actions@github.com"
+        git config --local user.name "github-actions"
+        git add .
+        git commit -m "[auto] NOROSHI LightGBM Update #KGNINJA" || echo "No changes"
+        git push
