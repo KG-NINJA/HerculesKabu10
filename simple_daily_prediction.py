@@ -4,15 +4,18 @@
 import json
 from datetime import datetime
 from pathlib import Path
+
 from typing import Dict, Optional
 
 import pandas as pd
 import yfinance as yf
 from lightgbm import LGBMRegressor
 
+
 BASE = Path(__file__).resolve().parent
 OUT_DIR = BASE / "data" / "daily_predictions"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
+
 
 
 def compute_indicators(df: pd.DataFrame) -> pd.DataFrame:
@@ -71,6 +74,7 @@ def technical_fallback(close: pd.Series) -> Dict[str, float]:
             "prediction_method": "technical_analysis",
             "features": {},
         }
+
 
     current = float(close.iloc[-1])
     ma20 = float(close.rolling(20).mean().iloc[-1])

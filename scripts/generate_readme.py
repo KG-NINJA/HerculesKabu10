@@ -32,7 +32,9 @@ def render_readme(pred: dict):
         nvda_price=nvda["current_price"],
         nvda_pred=nvda["predicted_price"],
         nvda_pct=round(nvda["predicted_change_pct"], 2),
+
         trend=f"{nvda['trend']} ({nvda.get('prediction_method', 'n/a')})",
+
     )
 
     rendered += "\n\n---\nGenerated automatically by NOROSHI Prediction System. #KGNINJA\n"
@@ -43,8 +45,10 @@ def render_readme(pred: dict):
 def render_docs(pred: dict):
     nvda = [x for x in pred["markets"]["米国市場"] if x["ticker"] == "NVDA"][0]
     market_ctx = pred.get("market_context", {})
+
     method = nvda.get("prediction_method", "n/a")
     features = nvda.get("features", {})
+
 
     html = f"""<!DOCTYPE html>
 <html lang=\"ja\">
@@ -65,7 +69,9 @@ img {{ max-width: 100%; height: auto; }}
 <section class=\"card\">
   <h2>NVDA 予測スナップショット</h2>
   <ul>
+
     <li>モデル: {method}</li>
+
     <li>現在価格: ${nvda['current_price']}</li>
     <li>予測価格: ${nvda['predicted_price']}</li>
     <li>予測変動率: {round(nvda['predicted_change_pct'], 2)}%</li>
@@ -76,8 +82,10 @@ img {{ max-width: 100%; height: auto; }}
   <h2>チャート</h2>
   <h3>NVDA 予測</h3>
   <img src=\"assets/nvda_prediction.png\" alt=\"NVDA Prediction\" />
+
   <h3>特徴量スナップショット</h3>
   <img src=\"assets/nvda_feature_snapshot.png\" alt=\"NVDA Feature Snapshot\" />
+
   <h3>市場スナップショット (SPY / VIX)</h3>
   <img src=\"assets/market_context.png\" alt=\"Market Context\" />
 </section>
@@ -86,8 +94,10 @@ img {{ max-width: 100%; height: auto; }}
   <ul>
     <li>SPY 終値: {market_ctx.get('spy_close')}</li>
     <li>VIX 終値: {market_ctx.get('vix_close')}</li>
+
     <li>NVDA ma20: {features.get('ma20')}</li>
     <li>NVDA RSI14: {features.get('rsi14')}</li>
+
   </ul>
 </section>
 </body>
