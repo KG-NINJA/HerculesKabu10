@@ -1,35 +1,38 @@
-name: Generate Charts #KGNINJA
+name: NOROSHI Charts + Dashboard #KGNINJA
 
 on:
-  workflow_dispatch:
-  schedule:
-    - cron: "30 0 * * *"
+  workflow_run:
+    workflows: ["NOROSHI Daily Prediction"]
+    types:
+      - completed
+
+permissions:
+  contents: write
 
 jobs:
-  build:
+  charts:
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.10"
 
-      - run: pip install -r requirements.txt
+    - name: Install deps
+      run: pip install -r requirements.txt
 
-      - name: Run Daily Prediction
-        run: python simple_daily_prediction.py
+    - name: Generate charts #KGNINJA
+      run: python scripts/generate_charts.py
 
-      - name: Generate Charts
-        run: python scripts/generate_charts.py
+    - name: Update README #KGNINJA
+      run: python scripts/generate_readme.py
 
-      - name: Push Results
-        run: |
-          git config --local user.email "actions@github.com"
-          git config --local user.name "github-actions"
-          git add analytics/*.png
-          git add data/daily_predictions/latest_predictions.json
-          git commit -m "Update charts #KGNINJA" || echo "No changes"
-          git pull --rebase origin main
-          git push origin main
+    - name: Commit Charts & README #KGNINJA
+      run: |
+        git config --local user.email "actions@github.com"
+        git config --local user.name "github-actions"
+        git add analytics/ docs/ README.md
+        git commit -m "[auto] charts + README update #KGNINJA" || echo "No changes"
+        git push
