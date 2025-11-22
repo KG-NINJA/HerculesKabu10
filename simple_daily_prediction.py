@@ -1,9 +1,10 @@
 """
-NOROSHI Prediction System - LightGBM Based
+NOROSHI Prediction System - Alpha Vantage API Edition
 Production-grade stock price prediction using LightGBM
+Fully GitHub Actions compatible
 """
 
-import yfinance as yf
+import requests
 import pandas as pd
 import numpy as np
 import json
@@ -14,6 +15,7 @@ import warnings
 import lightgbm as lgb
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
+import time
 
 warnings.filterwarnings('ignore')
 
@@ -23,9 +25,13 @@ TICKERS_JP = ["7203.T", "6758.T", "9984.T", "6861.T", "8035.T"]
 OUTPUT_DIR = "./data"
 ANALYTICS_DIR = "./analytics"
 MODEL_DIR = "./models"
+CACHE_DIR = "./data/cache"
+
+# Alpha Vantage API Key（GitHub Secretsから取得）
+ALPHA_VANTAGE_KEY = os.environ.get('ALPHA_VANTAGE_API_KEY', '')
 
 # ディレクトリ作成
-for d in [OUTPUT_DIR, ANALYTICS_DIR, MODEL_DIR]:
+for d in [OUTPUT_DIR, ANALYTICS_DIR, MODEL_DIR, CACHE_DIR]:
     os.makedirs(d, exist_ok=True)
 
 
@@ -109,7 +115,7 @@ def create_features(df):
         df['BB_MIDDLE'] = sma
         df['BB_LOWER'] = lower
         df['BB_WIDTH'] = upper - lower
-        df['BB_POSITION'] = (close - lower) / (upper - lower)  # 0-1の正規化
+        df['BB_POSITION'] = (close - lower) / (upper - lower)
         
         # ===== 出来高系 =====
         df['VOLUME_MA20'] = volume.rolling(20).mean()
@@ -138,21 +144,15 @@ def create_features(df):
 
 
 def prepare_training_data(df, target_periods=1):
-    """
-    Prepare training data
-    target_periods: 何日先を予測するか（デフォルト=1日先）
-    """
+    """Prepare training data"""
     try:
-        # NaN削除
         df = df.dropna()
         
         if len(df) < 50:
             return None, None, None
         
-        # ターゲット変数を作成（翌日の価格変動方向）
+        # ターゲット変数を作成
         df['TARGET'] = (df['CLOSE'].shift(-target_periods) > df['CLOSE']).astype(int)
-        
-        # 目的変数がNaNの行を削除
         df = df[df['TARGET'].notna()].copy()
         
         # 特徴量を選択
@@ -176,14 +176,12 @@ def train_or_load_model(ticker, df):
     try:
         model_path = f"{MODEL_DIR}/lgb_model_{ticker}.pkl"
         
-        # データ準備
         X, y, feature_cols = prepare_training_data(df)
         
         if X is None or len(X) < 30:
-            print(f"Insufficient data for {ticker}")
             return None, None, None
         
-        # モデルが存在し、十分に新しい場合は読み込み
+        # モデルが存在する場合は読み込み
         if os.path.exists(model_path):
             with open(model_path, 'rb') as f:
                 model_info = pickle.load(f)
@@ -193,16 +191,13 @@ def train_or_load_model(ticker, df):
             return model, feature_cols, scaler
         
         # 新規モデル訓練
-        # データ正規化
         scaler = StandardScaler()
         X_scaled = scaler.fit_transform(X)
         
-        # 訓練/テスト分割
         X_train, X_test, y_train, y_test = train_test_split(
             X_scaled, y, test_size=0.2, random_state=42
         )
         
-        # LightGBM モデル訓練
         model = lgb.LGBMClassifier(
             num_leaves=31,
             learning_rate=0.05,
@@ -217,7 +212,6 @@ def train_or_load_model(ticker, df):
         
         model.fit(X_train, y_train)
         
-        # モデル保存
         model_info = {
             'model': model,
             'features': feature_cols,
@@ -237,51 +231,103 @@ def train_or_load_model(ticker, df):
         return None, None, None
 
 
-def fetch_data(ticker, retries=3):
-    """Fetch stock data from yfinance with retry logic"""
-    import time
+def fetch_alpha_vantage(symbol, api_key):
+    """Fetch data from Alpha Vantage API"""
+    if not api_key:
+        print(f"  Warning: No API key. Using cache.")
+        return None
     
-    for attempt in range(retries):
-        try:
-            df = yf.download(
-                ticker, 
-                period="180d", 
-                progress=False, 
-                auto_adjust=False,
-                timeout=30
-            )
-            
-            if df is None or (isinstance(df, pd.DataFrame) and df.empty):
-                if attempt < retries - 1:
-                    time.sleep(2 ** attempt)  # Exponential backoff
-                    continue
-                return None
-            
-            df = df.reset_index()
-            
-            if 'Date' in df.columns:
-                df['Date'] = pd.to_datetime(df['Date'])
-            
-            return df
+    try:
+        url = "https://www.alphavantage.co/query"
+        params = {
+            "function": "TIME_SERIES_DAILY",
+            "symbol": symbol,
+            "apikey": api_key,
+            "outputsize": "full"
+        }
         
-        except Exception as e:
-            if attempt < retries - 1:
-                print(f"  Retry {attempt + 1}/{retries} for {ticker}...")
-                time.sleep(2 ** attempt)
-            else:
-                print(f"  Failed to fetch {ticker}: {str(e)[:50]}")
-                return None
+        response = requests.get(url, params=params, timeout=30)
+        data = response.json()
+        
+        # API エラーチェック
+        if "Note" in data:  # Rate limit reached
+            print(f"  API Rate limit. Using cache.")
+            return None
+        
+        if "Error Message" in data:
+            print(f"  API Error: {data['Error Message']}")
+            return None
+        
+        if "Time Series (Daily)" not in data:
+            print(f"  No data in response")
+            return None
+        
+        time_series = data["Time Series (Daily)"]
+        
+        # DataFrameに変換
+        records = []
+        for date_str, values in time_series.items():
+            try:
+                records.append({
+                    'Date': pd.to_datetime(date_str),
+                    'Open': float(values['1. open']),
+                    'High': float(values['2. high']),
+                    'Low': float(values['3. low']),
+                    'Close': float(values['4. close']),
+                    'Volume': float(values['5. volume'])
+                })
+            except:
+                continue
+        
+        if not records:
+            return None
+        
+        df = pd.DataFrame(records)
+        df = df.sort_values('Date').reset_index(drop=True)
+        
+        # 直近180日を取得
+        if len(df) > 180:
+            df = df.tail(180)
+        
+        return df
+    
+    except Exception as e:
+        print(f"  API Error: {str(e)[:50]}")
+        return None
+
+
+def fetch_data_with_fallback(ticker, api_key):
+    """
+    Fetch data from Alpha Vantage, fallback to cache
+    """
+    # Step 1: Alpha Vantage APIから取得を試みる
+    df_api = fetch_alpha_vantage(ticker, api_key)
+    
+    if df_api is not None and not df_api.empty:
+        # キャッシュに保存
+        cache_file = f"{CACHE_DIR}/{ticker}.csv"
+        df_api.to_csv(cache_file, index=False)
+        return df_api
+    
+    # Step 2: キャッシュから読み込み
+    cache_file = f"{CACHE_DIR}/{ticker}.csv"
+    if os.path.exists(cache_file):
+        try:
+            df = pd.read_csv(cache_file, parse_dates=['Date'])
+            return df
+        except:
+            return None
     
     return None
 
 
-def predict_ticker(ticker, market_type='us'):
+def predict_ticker(ticker, market_type='us', api_key=''):
     """Predict for a single ticker using LightGBM"""
     try:
-        # データ取得
-        df = fetch_data(ticker)
+        # データ取得（APIまたはキャッシュ）
+        df = fetch_data_with_fallback(ticker, api_key)
+        
         if df is None or df.empty:
-            print(f"  No data for {ticker}")
             return None
         
         # 特徴量作成
@@ -301,18 +347,14 @@ def predict_ticker(ticker, market_type='us'):
         X_latest = pd.DataFrame([latest_row])[feature_cols].fillna(0)
         X_latest_scaled = scaler.transform(X_latest)
         
-        # 予測確率
+        # 予測
         pred_proba = model.predict_proba(X_latest_scaled)[0]
         pred_class = model.predict(X_latest_scaled)[0]
         
-        # 価格取得
         close_price = float(latest_row.get('CLOSE', 0))
-        
-        # 予測方向
         trend_direction = '強気' if pred_class == 1 else '弱気'
         confidence = float(max(pred_proba))
         
-        # 予測価格（単純な方向性 + 平均ボラティリティ）
         volatility = float(latest_row.get('VOLATILITY_5D', 0.01))
         predicted_change = (volatility * 0.5) if pred_class == 1 else -(volatility * 0.5)
         predicted_price = close_price * (1 + predicted_change)
@@ -348,59 +390,35 @@ def predict_ticker(ticker, market_type='us'):
         return None
 
 
-def fetch_spy_vix(retries=3):
-    """Fetch SPY and VIX for market context with retry logic"""
-    import time
-    
-    for attempt in range(retries):
-        try:
-            spy = yf.download(
-                "SPY", 
-                period="5d", 
-                progress=False, 
-                auto_adjust=False,
-                timeout=30
-            )
-            vix = yf.download(
-                "^VIX", 
-                period="5d", 
-                progress=False, 
-                auto_adjust=False,
-                timeout=30
-            )
-            
-            if spy.empty or vix.empty:
-                if attempt < retries - 1:
-                    time.sleep(2 ** attempt)
-                    continue
-                return None
-            
-            spy_close = float(spy['Close'].iloc[-1])
-            spy_change = float(spy['Close'].pct_change().iloc[-1] * 100)
-            vix_close = float(vix['Close'].iloc[-1])
-            vix_change = float(vix['Close'].pct_change().iloc[-1] * 100)
-            
-            return {
-                'spy_close': spy_close,
-                'spy_change_pct': spy_change,
-                'vix_close': vix_close,
-                'vix_change_pct': vix_change
-            }
+def fetch_market_context(api_key):
+    """Fetch market context (SPY)"""
+    try:
+        df = fetch_alpha_vantage("SPY", api_key)
         
-        except Exception as e:
-            if attempt < retries - 1:
-                time.sleep(2 ** attempt)
-            else:
-                print(f"  Failed to fetch market context: {str(e)[:50]}")
-                return None
+        if df is None or df.empty or len(df) < 2:
+            return None
+        
+        df = df.sort_values('Date')
+        latest = df.iloc[-1]
+        prev = df.iloc[-2]
+        
+        spy_close = float(latest['Close'])
+        spy_change = float((latest['Close'] - prev['Close']) / prev['Close'] * 100)
+        
+        return {
+            'spy_close': spy_close,
+            'spy_change_pct': spy_change
+        }
     
-    return None
+    except Exception as e:
+        print(f"Error fetching market context: {e}")
+        return None
 
 
 def main():
     """Main execution"""
     print("=" * 60)
-    print("NOROSHI Prediction System - LightGBM Edition")
+    print("NOROSHI Prediction System - Alpha Vantage API Edition")
     print(f"Time: {datetime.now().isoformat()}")
     print("=" * 60)
     
@@ -410,30 +428,36 @@ def main():
     print("\n[US Market]")
     for ticker in TICKERS_US:
         print(f"Processing {ticker}...", end=" ")
-        pred = predict_ticker(ticker, 'us')
+        pred = predict_ticker(ticker, 'us', ALPHA_VANTAGE_KEY)
         if pred:
             predictions.append(pred)
             print(f"✓ ({pred['prediction_details']['direction']})")
         else:
             print("✗")
+        
+        # API Rate Limit対応
+        time.sleep(0.5)
     
     # 日本市場予測
     print("\n[Japanese Market]")
     for ticker in TICKERS_JP:
         print(f"Processing {ticker}...", end=" ")
-        pred = predict_ticker(ticker, 'jp')
+        pred = predict_ticker(ticker, 'jp', ALPHA_VANTAGE_KEY)
         if pred:
             predictions.append(pred)
             print(f"✓ ({pred['prediction_details']['direction']})")
         else:
             print("✗")
+        
+        time.sleep(0.5)
     
     # 市場コンテキスト
     print("\n[Market Context]")
-    market_ctx = fetch_spy_vix()
+    market_ctx = fetch_market_context(ALPHA_VANTAGE_KEY)
     if market_ctx:
         print(f"SPY: {market_ctx['spy_close']:.2f} ({market_ctx['spy_change_pct']:+.2f}%)")
-        print(f"VIX: {market_ctx['vix_close']:.2f} ({market_ctx['vix_change_pct']:+.2f}%)")
+    else:
+        print("✗ Market context unavailable")
     
     # 結果保存
     if predictions:
