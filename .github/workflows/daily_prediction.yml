@@ -25,6 +25,7 @@ jobs:
     - name: Run prediction
       run: python simple_daily_prediction.py
       env:
+        ALPHA_VANTAGE_API_KEY: ${{ secrets.ALPHA_VANTAGE_API_KEY }}
         PYTHONUNBUFFERED: 1
     
     - name: Commit and push results
