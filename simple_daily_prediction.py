@@ -235,19 +235,43 @@ def load_from_cache(ticker):
     cache_file = f"{CACHE_DIR}/{ticker}.csv"
     
     if not os.path.exists(cache_file):
-        print(f"  Cache file not found: {cache_file}")
+        print(f"Cache file not found: {cache_file}")
         return None
     
     try:
-        df = pd.read_csv(cache_file, index_col=0)
-        df.index = pd.to_datetime(df.index)
-        df = df.reset_index()
-        df.rename(columns={'index': 'Date'}, inplace=True)
+        # CSVを読み込む（インデックスなし、ヘッダー行あり）
+        df = pd.read_csv(cache_file)
+        
+        # 最初の列を日付として解析
+        # yfinanceのデフォルト出力形式に対応
+        first_col = df.columns[0]
+        if first_col.lower() == 'date' or first_col == 'Datetime':
+            df['Date'] = pd.to_datetime(df[first_col])
+            df = df.drop(columns=[first_col])
+        else:
+            # インデックスが日付の場合
+            df.index = pd.to_datetime(df.index)
+            df = df.reset_index()
+            if df.columns[0] != 'Date':
+                df.rename(columns={df.columns[0]: 'Date'}, inplace=True)
+        
+        # 列名を統一
+        df.columns = [col.strip().upper() if col.upper() != 'DATE' else 'Date' 
+                      for col in df.columns]
+        
+        # 必須列があるか確認
+        required = ['CLOSE', 'HIGH', 'LOW', 'OPEN', 'VOLUME']
+        if not all(col in df.columns for col in required):
+            print(f"Missing required columns. Available: {list(df.columns)}")
+            return None
+        
+        # データを日付順にソート
+        df = df.sort_values('Date').reset_index(drop=True)
         
         return df
     
     except Exception as e:
-        print(f"  Error reading cache: {e}")
+        print(f"Error reading cache: {str(e)[:60]}")
         return None
 
 
