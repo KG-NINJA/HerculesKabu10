@@ -28,7 +28,12 @@ MODEL_DIR = "./models"
 CACHE_DIR = "./data/cache"
 
 # Alpha Vantage API Key（GitHub Secretsから取得）
-ALPHA_VANTAGE_KEY = os.environ.get('ALPHA_VANTAGE_API_KEY', '')
+ALPHA_VANTAGE_KEY = os.environ.get('ALPHA_VANTAGE_API_KEY', '').strip()
+
+# デバッグ用
+if not ALPHA_VANTAGE_KEY:
+    print("WARNING: ALPHA_VANTAGE_API_KEY not set in environment variables")
+    print("Falling back to cache only mode")
 
 # ディレクトリ作成
 for d in [OUTPUT_DIR, ANALYTICS_DIR, MODEL_DIR, CACHE_DIR]:
@@ -234,7 +239,6 @@ def train_or_load_model(ticker, df):
 def fetch_alpha_vantage(symbol, api_key):
     """Fetch data from Alpha Vantage API"""
     if not api_key:
-        print(f"  Warning: No API key. Using cache.")
         return None
     
     try:
@@ -247,22 +251,33 @@ def fetch_alpha_vantage(symbol, api_key):
         }
         
         response = requests.get(url, params=params, timeout=30)
+        response.raise_for_status()  # HTTPエラーをチェック
         data = response.json()
         
-        # API エラーチェック
-        if "Note" in data:  # Rate limit reached
-            print(f"  API Rate limit. Using cache.")
+        # デバッグ情報
+        if "Note" in data:
+            print(f"    API Rate limit reached")
             return None
         
         if "Error Message" in data:
-            print(f"  API Error: {data['Error Message']}")
+            print(f"    API Error: {data['Error Message']}")
+            return None
+        
+        if "Information" in data:
+            print(f"    API Info: {data['Information'][:50]}")
             return None
         
         if "Time Series (Daily)" not in data:
-            print(f"  No data in response")
+            # レスポンスキーを確認
+            available_keys = list(data.keys())[:3]
+            print(f"    No 'Time Series (Daily)' in response. Available keys: {available_keys}")
             return None
         
         time_series = data["Time Series (Daily)"]
+        
+        if not time_series:
+            print(f"    Time series is empty")
+            return None
         
         # DataFrameに変換
         records = []
@@ -276,10 +291,11 @@ def fetch_alpha_vantage(symbol, api_key):
                     'Close': float(values['4. close']),
                     'Volume': float(values['5. volume'])
                 })
-            except:
+            except (KeyError, ValueError):
                 continue
         
         if not records:
+            print(f"    No valid records found")
             return None
         
         df = pd.DataFrame(records)
@@ -289,10 +305,14 @@ def fetch_alpha_vantage(symbol, api_key):
         if len(df) > 180:
             df = df.tail(180)
         
+        print(f"    ✓ Got {len(df)} days of data")
         return df
     
+    except requests.exceptions.RequestException as e:
+        print(f"    Network error: {str(e)[:40]}")
+        return None
     except Exception as e:
-        print(f"  API Error: {str(e)[:50]}")
+        print(f"    Error: {str(e)[:50]}")
         return None
 
 
