@@ -237,29 +237,42 @@ def train_or_load_model(ticker, df):
         return None, None, None
 
 
-def fetch_data(ticker):
-    """Fetch stock data from yfinance"""
-    try:
-        df = yf.download(
-            ticker, 
-            period="180d", 
-            progress=False, 
-            auto_adjust=False
-        )
-        
-        if df.empty or df is None:
-            return None
-        
-        df = df.reset_index()
-        
-        if 'Date' in df.columns:
-            df['Date'] = pd.to_datetime(df['Date'])
-        
-        return df
+def fetch_data(ticker, retries=3):
+    """Fetch stock data from yfinance with retry logic"""
+    import time
     
-    except Exception as e:
-        print(f"Error fetching {ticker}: {e}")
-        return None
+    for attempt in range(retries):
+        try:
+            df = yf.download(
+                ticker, 
+                period="180d", 
+                progress=False, 
+                auto_adjust=False,
+                timeout=30
+            )
+            
+            if df is None or (isinstance(df, pd.DataFrame) and df.empty):
+                if attempt < retries - 1:
+                    time.sleep(2 ** attempt)  # Exponential backoff
+                    continue
+                return None
+            
+            df = df.reset_index()
+            
+            if 'Date' in df.columns:
+                df['Date'] = pd.to_datetime(df['Date'])
+            
+            return df
+        
+        except Exception as e:
+            if attempt < retries - 1:
+                print(f"  Retry {attempt + 1}/{retries} for {ticker}...")
+                time.sleep(2 ** attempt)
+            else:
+                print(f"  Failed to fetch {ticker}: {str(e)[:50]}")
+                return None
+    
+    return None
 
 
 def predict_ticker(ticker, market_type='us'):
@@ -335,30 +348,53 @@ def predict_ticker(ticker, market_type='us'):
         return None
 
 
-def fetch_spy_vix():
-    """Fetch SPY and VIX for market context"""
-    try:
-        spy = yf.download("SPY", period="5d", progress=False, auto_adjust=False)
-        vix = yf.download("^VIX", period="5d", progress=False, auto_adjust=False)
-        
-        if spy.empty or vix.empty:
-            return None
-        
-        spy_close = float(spy['Close'].iloc[-1])
-        spy_change = float(spy['Close'].pct_change().iloc[-1] * 100)
-        vix_close = float(vix['Close'].iloc[-1])
-        vix_change = float(vix['Close'].pct_change().iloc[-1] * 100)
-        
-        return {
-            'spy_close': spy_close,
-            'spy_change_pct': spy_change,
-            'vix_close': vix_close,
-            'vix_change_pct': vix_change
-        }
+def fetch_spy_vix(retries=3):
+    """Fetch SPY and VIX for market context with retry logic"""
+    import time
     
-    except Exception as e:
-        print(f"Error fetching market context: {e}")
-        return None
+    for attempt in range(retries):
+        try:
+            spy = yf.download(
+                "SPY", 
+                period="5d", 
+                progress=False, 
+                auto_adjust=False,
+                timeout=30
+            )
+            vix = yf.download(
+                "^VIX", 
+                period="5d", 
+                progress=False, 
+                auto_adjust=False,
+                timeout=30
+            )
+            
+            if spy.empty or vix.empty:
+                if attempt < retries - 1:
+                    time.sleep(2 ** attempt)
+                    continue
+                return None
+            
+            spy_close = float(spy['Close'].iloc[-1])
+            spy_change = float(spy['Close'].pct_change().iloc[-1] * 100)
+            vix_close = float(vix['Close'].iloc[-1])
+            vix_change = float(vix['Close'].pct_change().iloc[-1] * 100)
+            
+            return {
+                'spy_close': spy_close,
+                'spy_change_pct': spy_change,
+                'vix_close': vix_close,
+                'vix_change_pct': vix_change
+            }
+        
+        except Exception as e:
+            if attempt < retries - 1:
+                time.sleep(2 ** attempt)
+            else:
+                print(f"  Failed to fetch market context: {str(e)[:50]}")
+                return None
+    
+    return None
 
 
 def main():
