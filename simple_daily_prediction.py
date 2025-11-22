@@ -1,10 +1,9 @@
 """
-NOROSHI Prediction System - yfinance + Polygon.io Unified Edition
+NOROSHI Prediction System - Cache-Based Edition
 Production-grade stock price prediction using LightGBM
 Fully GitHub Actions compatible
 """
 
-import requests
 import pandas as pd
 import numpy as np
 import json
@@ -16,7 +15,6 @@ import lightgbm as lgb
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 import time
-import yfinance as yf
 
 warnings.filterwarnings('ignore')
 
@@ -27,9 +25,6 @@ OUTPUT_DIR = "./data"
 ANALYTICS_DIR = "./analytics"
 MODEL_DIR = "./models"
 CACHE_DIR = "./data/cache"
-
-# Polygon.io API Key（GitHub Secretsから取得、オプション）
-POLYGON_API_KEY = os.environ.get('POLYGON_API_KEY', '').strip()
 
 # ディレクトリ作成
 for d in [OUTPUT_DIR, ANALYTICS_DIR, MODEL_DIR, CACHE_DIR]:
@@ -232,154 +227,57 @@ def train_or_load_model(ticker, df):
         return None, None, None
 
 
-def fetch_yfinance(symbol, retries=3):
-    """Fetch data from yfinance with retry logic"""
-    for attempt in range(retries):
-        try:
-            df = yf.download(
-                symbol,
-                period="180d",
-                progress=False,
-                auto_adjust=False
-            )
-            
-            if df is None or (isinstance(df, pd.DataFrame) and df.empty):
-                if attempt < retries - 1:
-                    time.sleep(2 ** attempt)
-                    continue
-                return None
-            
-            df = df.reset_index()
-            
-            if 'Date' in df.columns:
-                df['Date'] = pd.to_datetime(df['Date'])
-            
-            print(f"    ✓ Got {len(df)} days of data")
-            return df
-        
-        except Exception as e:
-            if attempt < retries - 1:
-                print(f"    Retry {attempt + 1}/{retries}...")
-                time.sleep(2 ** attempt)
-            else:
-                print(f"    Error: {str(e)[:40]}")
-                return None
+def load_from_cache(ticker):
+    """
+    Load data from cache CSV file
+    キャッシュファイルから直接データを読み込む
+    """
+    cache_file = f"{CACHE_DIR}/{ticker}.csv"
     
-    return None
-
-
-def fetch_polygon_io(symbol, api_key):
-    """Fetch data from Polygon.io API (US stocks only)"""
-    if not api_key or len(api_key) < 10:
+    if not os.path.exists(cache_file):
+        print(f"  Cache file not found: {cache_file}")
         return None
     
     try:
-        end_date = datetime.now().date()
-        start_date = end_date - timedelta(days=180)
+        df = pd.read_csv(cache_file, index_col=0)
+        df.index = pd.to_datetime(df.index)
+        df = df.reset_index()
+        df.rename(columns={'index': 'Date'}, inplace=True)
         
-        url = f"https://api.polygon.io/v2/aggs/ticker/{symbol}/range/1/day/{start_date}/{end_date}"
-        params = {
-            "apikey": api_key,
-            "limit": 50000,
-            "sort": "asc"
-        }
-        
-        response = requests.get(url, params=params, timeout=30)
-        response.raise_for_status()
-        data = response.json()
-        
-        if not data.get('status') or data['status'] != 'OK':
-            return None
-        
-        results = data.get('results', [])
-        if not results:
-            return None
-        
-        records = []
-        for bar in results:
-            try:
-                date = pd.to_datetime(bar['t'], unit='ms')
-                records.append({
-                    'Date': date,
-                    'Open': float(bar.get('o', 0)),
-                    'High': float(bar.get('h', 0)),
-                    'Low': float(bar.get('l', 0)),
-                    'Close': float(bar.get('c', 0)),
-                    'Volume': float(bar.get('v', 0))
-                })
-            except (KeyError, ValueError):
-                continue
-        
-        if not records:
-            return None
-        
-        df = pd.DataFrame(records)
-        df = df.sort_values('Date').reset_index(drop=True)
-        
-        print(f"    ✓ Got {len(df)} days from Polygon.io")
         return df
     
-    except:
+    except Exception as e:
+        print(f"  Error reading cache: {e}")
         return None
 
 
-def fetch_data_with_fallback(ticker, market_type='us', polygon_key=''):
-    """
-    Fetch data using best available source
-    US: Try Polygon.io first, then yfinance
-    JP: yfinance only
-    """
-    # Step 1: Try API source
-    if market_type == 'us' and polygon_key and len(polygon_key) > 10:
-        df_api = fetch_polygon_io(ticker, polygon_key)
-        if df_api is not None and not df_api.empty:
-            cache_file = f"{CACHE_DIR}/{ticker}.csv"
-            df_api.to_csv(cache_file, index=False)
-            return df_api
-    
-    # Step 2: Fallback to yfinance (works for both US and JP)
-    print(f"    Fetching from yfinance...", end=" ")
-    df_yf = fetch_yfinance(ticker)
-    
-    if df_yf is not None and not df_yf.empty:
-        cache_file = f"{CACHE_DIR}/{ticker}.csv"
-        df_yf.to_csv(cache_file, index=False)
-        return df_yf
-    
-    # Step 3: Use cache
-    cache_file = f"{CACHE_DIR}/{ticker}.csv"
-    if os.path.exists(cache_file):
-        try:
-            df = pd.read_csv(cache_file, parse_dates=['Date'])
-            print(f"Using cache")
-            return df
-        except:
-            return None
-    
-    return None
-
-
-def predict_ticker(ticker, market_type='us', polygon_key=''):
+def predict_ticker(ticker):
     """Predict for a single ticker using LightGBM"""
     try:
-        df = fetch_data_with_fallback(ticker, market_type, polygon_key)
+        # Step 1: キャッシュから読み込み
+        df = load_from_cache(ticker)
         
         if df is None or df.empty:
             return None
         
+        # Step 2: 特徴量作成
         df_features = create_features(df.copy())
         if df_features is None or df_features.empty:
             return None
         
+        # Step 3: モデル訓練/読み込み
         model, feature_cols, scaler = train_or_load_model(ticker, df_features)
         if model is None:
             return None
         
+        # Step 4: 最新データ取得
         latest_row = df_features.iloc[-1].to_dict()
         
+        # Step 5: 特徴量抽出
         X_latest = pd.DataFrame([latest_row])[feature_cols].fillna(0)
         X_latest_scaled = scaler.transform(X_latest)
         
+        # Step 6: 予測
         pred_proba = model.predict_proba(X_latest_scaled)[0]
         pred_class = model.predict(X_latest_scaled)[0]
         
@@ -425,7 +323,7 @@ def predict_ticker(ticker, market_type='us', polygon_key=''):
 def main():
     """Main execution"""
     print("=" * 60)
-    print("NOROSHI Prediction System - Unified Edition")
+    print("NOROSHI Prediction System - Cache-Based Edition")
     print(f"Time: {datetime.now().isoformat()}")
     print("=" * 60)
     
@@ -435,27 +333,27 @@ def main():
     print("\n[US Market]")
     for ticker in TICKERS_US:
         print(f"Processing {ticker}...", end=" ")
-        pred = predict_ticker(ticker, 'us', POLYGON_API_KEY)
+        pred = predict_ticker(ticker)
         if pred:
             predictions.append(pred)
             print(f"✓ ({pred['prediction_details']['direction']})")
         else:
             print("✗")
         
-        time.sleep(0.5)
+        time.sleep(0.2)
     
     # 日本市場予測
     print("\n[Japanese Market]")
     for ticker in TICKERS_JP:
         print(f"Processing {ticker}...", end=" ")
-        pred = predict_ticker(ticker, 'jp', '')
+        pred = predict_ticker(ticker)
         if pred:
             predictions.append(pred)
             print(f"✓ ({pred['prediction_details']['direction']})")
         else:
             print("✗")
         
-        time.sleep(0.5)
+        time.sleep(0.2)
     
     # 結果保存
     if predictions:
