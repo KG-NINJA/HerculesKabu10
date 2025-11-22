@@ -1,0 +1,42 @@
+name: Generate Charts #KGNINJA
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "30 0 * * *"  # 日本時間 09:30
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Daily Prediction (create latest_predictions.json)
+        run: |
+          python simple_daily_prediction.py
+
+      - name: Generate Charts
+        run: |
+          python scripts/generate_charts.py
+
+      - name: Commit and Push Charts
+        run: |
+          git config --local user.email "actions@github.com"
+          git config --local user.name "github-actions"
+          git add analytics/*.png
+          git add data/daily_predictions/latest_predictions.json
+          git commit -m "Update charts #KGNINJA" || echo "No changes"
+          git pull --rebase origin main
+          git push origin main
