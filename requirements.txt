@@ -1,5 +1,5 @@
 yfinance
+lightgbm
 pandas
 numpy
-lightgbm
 matplotlib
