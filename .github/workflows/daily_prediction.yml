@@ -22,14 +22,10 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
     
-    - name: Check API Key
-      run: |
-        echo "API Key is set: ${{ secrets.ALPHA_VANTAGE_API_KEY != '' }}"
-    
     - name: Run prediction
       run: python simple_daily_prediction.py
       env:
-        ALPHA_VANTAGE_API_KEY: ${{ secrets.ALPHA_VANTAGE_API_KEY }}
+        POLYGON_API_KEY: ${{ secrets.POLYGON_API_KEY }}
         PYTHONUNBUFFERED: 1
     
     - name: Commit and push results
