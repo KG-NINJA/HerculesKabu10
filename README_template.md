@@ -8,8 +8,8 @@
 - トレンド: {trend}
 
 ## チャート
-### 予測
-![NVDA Prediction](data/charts/nvda_signal.png)
+### NVDA 予測
+![NVDA Prediction](analytics/nvda_prediction.png)
 
 ### SPY / VIX 市場状況
-![Market Context](data/charts/spy_vix_context.png)
+![Market Context](analytics/market_context.png)

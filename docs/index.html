@@ -2,79 +2,40 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8" />
-<title>Stock Auto Predictor Dashboard</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<title>NOROSHI Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
 <style>
-body { font-family: sans-serif; margin: 20px; }
-.chart-container { width: 90%; margin-bottom: 60px; }
-h2 { margin-top: 40px; }
+body { font-family: 'Segoe UI', sans-serif; margin: 24px; }
+section { margin-bottom: 32px; }
+.card { border: 1px solid #ccc; padding: 16px; border-radius: 8px; max-width: 720px; }
+img { max-width: 100%; height: auto; }
 </style>
 </head>
-
 <body>
-<h1>📈 Auto Prediction Dashboard</h1>
-
-<p>最新の予測データは GitHub Actions により毎日更新されます。</p>
-
-<div class="chart-container">
-  <h2>NVDA 信頼スコア 推移</h2>
-  <canvas id="confidenceChart"></canvas>
-</div>
-
-<div class="chart-container">
-  <h2>NVDA シグナル 強度</h2>
-  <canvas id="signalChart"></canvas>
-</div>
-
-<script>
-async function loadJSON(path) {
-  const res = await fetch(path);
-  return await res.json();
-}
-
-async function loadLogs() {
-  const logsList = await fetch("logs_index.json").then(r => r.json());
-  const logs = [];
-  for (const file of logsList) {
-      logs.push(await loadJSON(`../logs/${file}`));
-  }
-  return logs;
-}
-
-async function main() {
-  const logs = await loadLogs();
-  
-  const labels = logs.map(l => l.timestamp);
-  const confidence = logs.map(l => l.confidence);
-  const signalStrength = logs.map(l => l.signal_strength);
-
-  new Chart(document.getElementById("confidenceChart"), {
-      type: 'line',
-      data: {
-        labels: labels,
-        datasets: [{
-          label: 'Confidence',
-          data: confidence,
-          borderColor: 'blue'
-        }]
-      }
-  });
-
-  new Chart(document.getElementById("signalChart"), {
-      type: 'bar',
-      data: {
-        labels: labels,
-        datasets: [{
-          label: 'Signal Strength',
-          data: signalStrength,
-          backgroundColor: 'orange'
-        }]
-      }
-  });
-}
-
-main();
-</script>
-
+<h1>📈 NOROSHI Prediction Dashboard</h1>
+<p>最終更新: Pending run (自動生成 #KGNINJA)</p>
+<section class="card">
+  <h2>NVDA 予測スナップショット</h2>
+  <ul>
+    <li>現在価格: -</li>
+    <li>予測価格: -</li>
+    <li>予測変動率: -%</li>
+    <li>トレンド: -</li>
+  </ul>
+</section>
+<section>
+  <h2>チャート</h2>
+  <h3>NVDA 予測</h3>
+  <img src="assets/nvda_prediction.png" alt="NVDA Prediction" />
+  <h3>市場スナップショット (SPY / VIX)</h3>
+  <img src="assets/market_context.png" alt="Market Context" />
+</section>
+<section class="card">
+  <h2>市場コンテキスト</h2>
+  <ul>
+    <li>SPY 終値: -</li>
+    <li>VIX 終値: -</li>
+  </ul>
+</section>
 </body>
 </html>

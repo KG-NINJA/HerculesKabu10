@@ -1,4 +1,4 @@
-name: NOROSHI Daily Prediction #KGNINJA
+name: NOROSHI Daily Prediction
 
 on:
   schedule:
@@ -12,23 +12,27 @@ jobs:
   prediction:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+      - name: Checkout #KGNINJA
+        uses: actions/checkout@v4
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.10"
+      - name: Set up Python #KGNINJA
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
 
-    - name: Install deps
-      run: pip install -r requirements.txt
+      - name: Install deps #KGNINJA
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-    - name: Run prediction #KGNINJA
-      run: python simple_daily_prediction.py
+      - name: Run prediction #KGNINJA
+        run: python simple_daily_prediction.py
 
-    - name: Commit JSON #KGNINJA
-      run: |
-        git config --local user.email "actions@github.com"
-        git config --local user.name "github-actions"
-        git add data/daily_predictions/latest_predictions.json
-        git commit -m "[auto] prediction json update #KGNINJA" || echo "No changes"
-        git push
+      - name: Commit JSON #KGNINJA
+        run: |
+          git config --local user.email "actions@github.com"
+          git config --local user.name "github-actions"
+          git add data/daily_predictions/latest_predictions.json data/daily_predictions/.keep
+          git status --short
+          git commit -m "[auto] prediction json update #KGNINJA" || echo "No changes"
+          git push
