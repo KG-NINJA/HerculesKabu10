@@ -3,3 +3,5 @@ matplotlib
 yfinance
 numpy
 scipy
+lightgbm
+scikit-learn
