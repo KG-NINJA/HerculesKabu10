@@ -5,9 +5,6 @@ on:
     - cron: "0 1 * * *"
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 jobs:
   run:
     runs-on: ubuntu-latest
@@ -19,22 +16,22 @@ jobs:
       with:
         python-version: "3.10"
 
-    - name: Install dependencies
+    - name: Install deps
       run: pip install -r requirements.txt
 
-    - name: Run LightGBM predictions
+    - name: Run predictions #KGNINJA
       run: python simple_daily_prediction.py
 
-    - name: Generate charts
+    - name: Generate charts #KGNINJA
       run: python scripts/generate_charts.py
 
-    - name: Update README
+    - name: Update README #KGNINJA
       run: python scripts/generate_readme.py
 
-    - name: Commit and push
+    - name: Commit & Push #KGNINJA
       run: |
         git config --local user.email "actions@github.com"
         git config --local user.name "github-actions"
         git add .
-        git commit -m "[auto] NOROSHI LightGBM Update #KGNINJA" || echo "No changes"
+        git commit -m "[auto] NOROSHI update #KGNINJA" || echo "No changes"
         git push
