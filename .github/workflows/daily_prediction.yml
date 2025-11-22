@@ -22,6 +22,10 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
     
+    - name: Check API Key
+      run: |
+        echo "API Key is set: ${{ secrets.ALPHA_VANTAGE_API_KEY != '' }}"
+    
     - name: Run prediction
       run: python simple_daily_prediction.py
       env:
