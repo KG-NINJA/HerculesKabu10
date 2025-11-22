@@ -1,5 +1,5 @@
 """
-NOROSHI Prediction System - Alpha Vantage API Edition
+NOROSHI Prediction System - Polygon.io API Edition
 Production-grade stock price prediction using LightGBM
 Fully GitHub Actions compatible
 """
@@ -27,17 +27,21 @@ ANALYTICS_DIR = "./analytics"
 MODEL_DIR = "./models"
 CACHE_DIR = "./data/cache"
 
-# Alpha Vantage API Key（GitHub Secretsから取得）
-ALPHA_VANTAGE_KEY = os.environ.get('ALPHA_VANTAGE_API_KEY', '').strip()
+# Polygon.io API Key（GitHub Secretsから取得）
+POLYGON_API_KEY = os.environ.get('POLYGON_API_KEY', '').strip()
 
-# デバッグ用
-if not ALPHA_VANTAGE_KEY:
-    print("WARNING: ALPHA_VANTAGE_API_KEY not set in environment variables")
-    print("Falling back to cache only mode")
+# JPFUNDS API Key（日本株用 - 無料API）
+JPFUNDS_API_KEY = os.environ.get('JPFUNDS_API_KEY', '').strip()
 
 # ディレクトリ作成
 for d in [OUTPUT_DIR, ANALYTICS_DIR, MODEL_DIR, CACHE_DIR]:
     os.makedirs(d, exist_ok=True)
+
+# デバッグ用
+if not POLYGON_API_KEY:
+    print("WARNING: POLYGON_API_KEY not set")
+if not JPFUNDS_API_KEY:
+    print("WARNING: JPFUNDS_API_KEY not set (Japanese stocks will use cache only)")
 
 
 def calculate_rsi(prices, period=14):
@@ -236,60 +240,116 @@ def train_or_load_model(ticker, df):
         return None, None, None
 
 
-def fetch_alpha_vantage(symbol, api_key):
-    """Fetch data from Alpha Vantage API"""
-    if not api_key:
+def fetch_polygon_io(symbol, api_key):
+    """Fetch data from Polygon.io API (US stocks)"""
+    if not api_key or len(api_key) < 10:
         return None
     
     try:
-        url = "https://www.alphavantage.co/query"
+        # 180日前の日付を計算
+        end_date = datetime.now().date()
+        start_date = end_date - timedelta(days=180)
+        
+        url = f"https://api.polygon.io/v2/aggs/ticker/{symbol}/range/1/day/{start_date}/{end_date}"
         params = {
-            "function": "TIME_SERIES_DAILY",
-            "symbol": symbol,
             "apikey": api_key,
-            "outputsize": "full"
+            "limit": 50000,
+            "sort": "asc"
         }
         
         response = requests.get(url, params=params, timeout=30)
-        response.raise_for_status()  # HTTPエラーをチェック
+        response.raise_for_status()
         data = response.json()
         
-        # デバッグ情報
-        if "Note" in data:
-            print(f"    API Rate limit reached")
+        # ステータスチェック
+        if not data.get('status') or data['status'] != 'OK':
+            print(f"    API Error: {data.get('status')}")
             return None
         
-        if "Error Message" in data:
-            print(f"    API Error: {data['Error Message']}")
-            return None
-        
-        if "Information" in data:
-            print(f"    API Info: {data['Information'][:50]}")
-            return None
-        
-        if "Time Series (Daily)" not in data:
-            # レスポンスキーを確認
-            available_keys = list(data.keys())[:3]
-            print(f"    No 'Time Series (Daily)' in response. Available keys: {available_keys}")
-            return None
-        
-        time_series = data["Time Series (Daily)"]
-        
-        if not time_series:
-            print(f"    Time series is empty")
+        results = data.get('results', [])
+        if not results:
+            print(f"    No data returned")
             return None
         
         # DataFrameに変換
         records = []
-        for date_str, values in time_series.items():
+        for bar in results:
+            try:
+                # タイムスタンプはミリ秒で返される
+                date = pd.to_datetime(bar['t'], unit='ms')
+                records.append({
+                    'Date': date,
+                    'Open': float(bar.get('o', 0)),
+                    'High': float(bar.get('h', 0)),
+                    'Low': float(bar.get('l', 0)),
+                    'Close': float(bar.get('c', 0)),
+                    'Volume': float(bar.get('v', 0))
+                })
+            except (KeyError, ValueError) as e:
+                continue
+        
+        if not records:
+            print(f"    No valid records found")
+            return None
+        
+        df = pd.DataFrame(records)
+        df = df.sort_values('Date').reset_index(drop=True)
+        
+        print(f"    ✓ Got {len(df)} days of data")
+        return df
+    
+    except requests.exceptions.RequestException as e:
+        if "401" in str(e) or "Unauthorized" in str(e):
+            print(f"    API Key invalid or expired")
+        elif "429" in str(e):
+            print(f"    Rate limited")
+        else:
+            print(f"    Network error: {str(e)[:40]}")
+        return None
+    except Exception as e:
+        print(f"    Error: {str(e)[:50]}")
+        return None
+
+
+def fetch_japan_stocks_api(symbol, api_key):
+    """
+    Fetch Japanese stock data from JPFUNDS API
+    Symbol format: "7203.T" -> use "7203" for API
+    """
+    if not api_key or len(api_key) < 10:
+        return None
+    
+    try:
+        # シンボルを処理 (例: "7203.T" -> "7203")
+        symbol_code = symbol.split('.')[0] if '.' in symbol else symbol
+        
+        # JPFUNDS APIエンドポイント
+        url = f"https://jpfunds.com/api/json/stocks/{symbol_code}/daily"
+        params = {
+            "apikey": api_key,
+            "days": 180
+        }
+        
+        response = requests.get(url, params=params, timeout=30)
+        response.raise_for_status()
+        data = response.json()
+        
+        # レスポンス形式チェック
+        if not isinstance(data, list) or len(data) == 0:
+            print(f"    No data returned")
+            return None
+        
+        # DataFrameに変換
+        records = []
+        for item in data:
             try:
                 records.append({
-                    'Date': pd.to_datetime(date_str),
-                    'Open': float(values['1. open']),
-                    'High': float(values['2. high']),
-                    'Low': float(values['3. low']),
-                    'Close': float(values['4. close']),
-                    'Volume': float(values['5. volume'])
+                    'Date': pd.to_datetime(item['date']),
+                    'Open': float(item.get('open', 0)),
+                    'High': float(item.get('high', 0)),
+                    'Low': float(item.get('low', 0)),
+                    'Close': float(item.get('close', 0)),
+                    'Volume': float(item.get('volume', 0))
                 })
             except (KeyError, ValueError):
                 continue
@@ -301,39 +361,52 @@ def fetch_alpha_vantage(symbol, api_key):
         df = pd.DataFrame(records)
         df = df.sort_values('Date').reset_index(drop=True)
         
-        # 直近180日を取得
-        if len(df) > 180:
-            df = df.tail(180)
-        
         print(f"    ✓ Got {len(df)} days of data")
         return df
     
     except requests.exceptions.RequestException as e:
-        print(f"    Network error: {str(e)[:40]}")
+        if "401" in str(e):
+            print(f"    API Key invalid")
+        elif "429" in str(e):
+            print(f"    Rate limited")
+        else:
+            print(f"    Network error: {str(e)[:40]}")
         return None
     except Exception as e:
         print(f"    Error: {str(e)[:50]}")
         return None
 
 
-def fetch_data_with_fallback(ticker, api_key):
+def fetch_data_with_fallback(ticker, market_type='us', polygon_key='', japan_key=''):
     """
-    Fetch data from Alpha Vantage, fallback to cache
+    Fetch data based on market type
+    US: Polygon.io API
+    JP: JPFUNDS API
+    Both fallback to cache
     """
-    # Step 1: Alpha Vantage APIから取得を試みる
-    df_api = fetch_alpha_vantage(ticker, api_key)
+    # Step 1: API から取得を試みる
+    if market_type == 'us' and polygon_key and len(polygon_key) > 10:
+        df_api = fetch_polygon_io(ticker, polygon_key)
+        if df_api is not None and not df_api.empty:
+            # キャッシュに保存
+            cache_file = f"{CACHE_DIR}/{ticker}.csv"
+            df_api.to_csv(cache_file, index=False)
+            return df_api
     
-    if df_api is not None and not df_api.empty:
-        # キャッシュに保存
-        cache_file = f"{CACHE_DIR}/{ticker}.csv"
-        df_api.to_csv(cache_file, index=False)
-        return df_api
+    elif market_type == 'jp' and japan_key and len(japan_key) > 10:
+        df_api = fetch_japan_stocks_api(ticker, japan_key)
+        if df_api is not None and not df_api.empty:
+            # キャッシュに保存
+            cache_file = f"{CACHE_DIR}/{ticker}.csv"
+            df_api.to_csv(cache_file, index=False)
+            return df_api
     
     # Step 2: キャッシュから読み込み
     cache_file = f"{CACHE_DIR}/{ticker}.csv"
     if os.path.exists(cache_file):
         try:
             df = pd.read_csv(cache_file, parse_dates=['Date'])
+            print(f"    ✓ Using cache")
             return df
         except:
             return None
@@ -341,11 +414,11 @@ def fetch_data_with_fallback(ticker, api_key):
     return None
 
 
-def predict_ticker(ticker, market_type='us', api_key=''):
+def predict_ticker(ticker, market_type='us', polygon_key='', japan_key=''):
     """Predict for a single ticker using LightGBM"""
     try:
         # データ取得（APIまたはキャッシュ）
-        df = fetch_data_with_fallback(ticker, api_key)
+        df = fetch_data_with_fallback(ticker, market_type, polygon_key, japan_key)
         
         if df is None or df.empty:
             return None
@@ -413,7 +486,7 @@ def predict_ticker(ticker, market_type='us', api_key=''):
 def fetch_market_context(api_key):
     """Fetch market context (SPY)"""
     try:
-        df = fetch_alpha_vantage("SPY", api_key)
+        df = fetch_polygon_io("SPY", api_key)
         
         if df is None or df.empty or len(df) < 2:
             return None
@@ -438,42 +511,41 @@ def fetch_market_context(api_key):
 def main():
     """Main execution"""
     print("=" * 60)
-    print("NOROSHI Prediction System - Alpha Vantage API Edition")
+    print("NOROSHI Prediction System - Multi-API Edition")
     print(f"Time: {datetime.now().isoformat()}")
     print("=" * 60)
     
     predictions = []
     
-    # US市場予測
-    print("\n[US Market]")
+    # US市場予測（Polygon.io）
+    print("\n[US Market - Polygon.io]")
     for ticker in TICKERS_US:
         print(f"Processing {ticker}...", end=" ")
-        pred = predict_ticker(ticker, 'us', ALPHA_VANTAGE_KEY)
+        pred = predict_ticker(ticker, 'us', POLYGON_API_KEY, '')
         if pred:
             predictions.append(pred)
             print(f"✓ ({pred['prediction_details']['direction']})")
         else:
             print("✗")
         
-        # API Rate Limit対応
-        time.sleep(0.5)
+        time.sleep(0.2)
     
-    # 日本市場予測
-    print("\n[Japanese Market]")
+    # 日本市場予測（JPFUNDS API）
+    print("\n[Japanese Market - JPFUNDS API]")
     for ticker in TICKERS_JP:
         print(f"Processing {ticker}...", end=" ")
-        pred = predict_ticker(ticker, 'jp', ALPHA_VANTAGE_KEY)
+        pred = predict_ticker(ticker, 'jp', '', JPFUNDS_API_KEY)
         if pred:
             predictions.append(pred)
             print(f"✓ ({pred['prediction_details']['direction']})")
         else:
             print("✗")
         
-        time.sleep(0.5)
+        time.sleep(0.2)
     
-    # 市場コンテキスト
+    # 市場コンテキスト（SPY - US株）
     print("\n[Market Context]")
-    market_ctx = fetch_market_context(ALPHA_VANTAGE_KEY)
+    market_ctx = fetch_market_context(POLYGON_API_KEY)
     if market_ctx:
         print(f"SPY: {market_ctx['spy_close']:.2f} ({market_ctx['spy_change_pct']:+.2f}%)")
     else:
