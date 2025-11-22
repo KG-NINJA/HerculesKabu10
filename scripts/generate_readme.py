@@ -1,24 +1,32 @@
 #!/usr/bin/env python3
+# NOROSHI README Auto Generator #KGNINJA
+
 import json
 from pathlib import Path
 
 BASE = Path(__file__).resolve().parents[1]
-PRED = BASE / "data" / "daily_predictions" / "latest_predictions.json"
+PRED_FILE = BASE / "data" / "daily_predictions" / "latest_predictions.json"
 README = BASE / "README.md"
 
-def generate():
-    data = json.loads(PRED.read_text(encoding="utf-8"))
+def update_readme():
+    payload = json.loads(PRED_FILE.read_text(encoding="utf-8"))
+    us = payload["markets"]["US"]
+    jp = payload["markets"]["JP"]
 
-    md = "# NOROSHI Prediction Dashboard #KGNINJA\n\n"
-    md += f"**更新日時：{data['timestamp']}**\n\n"
+    md = []
+    md.append("# NOROSHI Auto Stock Prediction #KGNINJA\n")
+    md.append(f"Updated: **{payload['timestamp']}**\n")
 
-    for market, items in data["markets"].items():
-        md += f"## {market}\n\n"
-        for d in items:
-            md += f"- **{d['ticker']}** → 予測: {d['predicted_price']:.2f} ({d['trend']})\n"
+    md.append("## US Market\n")
+    for x in us:
+        md.append(f"- **{x['ticker']}** → {x['predicted_change_pct']:.2f}% ({x['trend']})")
 
-    README.write_text(md, encoding="utf-8")
-    print("README updated #KGNINJA")
+    md.append("\n## Japan Market\n")
+    for x in jp:
+        md.append(f"- **{x['ticker']}** → {x['predicted_change_pct']:.2f}% ({x['trend']})")
+
+    README.write_text("\n".join(md), encoding="utf-8")
+    print("README Updated #KGNINJA")
 
 if __name__ == "__main__":
-    generate()
+    update_readme()
