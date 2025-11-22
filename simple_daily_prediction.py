@@ -1,5 +1,5 @@
 """
-NOROSHI Prediction System - Polygon.io API Edition
+NOROSHI Prediction System - yfinance + Polygon.io Unified Edition
 Production-grade stock price prediction using LightGBM
 Fully GitHub Actions compatible
 """
@@ -16,6 +16,7 @@ import lightgbm as lgb
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 import time
+import yfinance as yf
 
 warnings.filterwarnings('ignore')
 
@@ -27,21 +28,12 @@ ANALYTICS_DIR = "./analytics"
 MODEL_DIR = "./models"
 CACHE_DIR = "./data/cache"
 
-# Polygon.io API Key（GitHub Secretsから取得）
+# Polygon.io API Key（GitHub Secretsから取得、オプション）
 POLYGON_API_KEY = os.environ.get('POLYGON_API_KEY', '').strip()
-
-# JPFUNDS API Key（日本株用 - 無料API）
-JPFUNDS_API_KEY = os.environ.get('JPFUNDS_API_KEY', '').strip()
 
 # ディレクトリ作成
 for d in [OUTPUT_DIR, ANALYTICS_DIR, MODEL_DIR, CACHE_DIR]:
     os.makedirs(d, exist_ok=True)
-
-# デバッグ用
-if not POLYGON_API_KEY:
-    print("WARNING: POLYGON_API_KEY not set")
-if not JPFUNDS_API_KEY:
-    print("WARNING: JPFUNDS_API_KEY not set (Japanese stocks will use cache only)")
 
 
 def calculate_rsi(prices, period=14):
@@ -240,13 +232,48 @@ def train_or_load_model(ticker, df):
         return None, None, None
 
 
+def fetch_yfinance(symbol, retries=3):
+    """Fetch data from yfinance with retry logic"""
+    for attempt in range(retries):
+        try:
+            df = yf.download(
+                symbol,
+                period="180d",
+                progress=False,
+                auto_adjust=False
+            )
+            
+            if df is None or (isinstance(df, pd.DataFrame) and df.empty):
+                if attempt < retries - 1:
+                    time.sleep(2 ** attempt)
+                    continue
+                return None
+            
+            df = df.reset_index()
+            
+            if 'Date' in df.columns:
+                df['Date'] = pd.to_datetime(df['Date'])
+            
+            print(f"    ✓ Got {len(df)} days of data")
+            return df
+        
+        except Exception as e:
+            if attempt < retries - 1:
+                print(f"    Retry {attempt + 1}/{retries}...")
+                time.sleep(2 ** attempt)
+            else:
+                print(f"    Error: {str(e)[:40]}")
+                return None
+    
+    return None
+
+
 def fetch_polygon_io(symbol, api_key):
-    """Fetch data from Polygon.io API (US stocks)"""
+    """Fetch data from Polygon.io API (US stocks only)"""
     if not api_key or len(api_key) < 10:
         return None
     
     try:
-        # 180日前の日付を計算
         end_date = datetime.now().date()
         start_date = end_date - timedelta(days=180)
         
@@ -261,21 +288,16 @@ def fetch_polygon_io(symbol, api_key):
         response.raise_for_status()
         data = response.json()
         
-        # ステータスチェック
         if not data.get('status') or data['status'] != 'OK':
-            print(f"    API Error: {data.get('status')}")
             return None
         
         results = data.get('results', [])
         if not results:
-            print(f"    No data returned")
             return None
         
-        # DataFrameに変換
         records = []
         for bar in results:
             try:
-                # タイムスタンプはミリ秒で返される
                 date = pd.to_datetime(bar['t'], unit='ms')
                 records.append({
                     'Date': date,
@@ -285,128 +307,51 @@ def fetch_polygon_io(symbol, api_key):
                     'Close': float(bar.get('c', 0)),
                     'Volume': float(bar.get('v', 0))
                 })
-            except (KeyError, ValueError) as e:
-                continue
-        
-        if not records:
-            print(f"    No valid records found")
-            return None
-        
-        df = pd.DataFrame(records)
-        df = df.sort_values('Date').reset_index(drop=True)
-        
-        print(f"    ✓ Got {len(df)} days of data")
-        return df
-    
-    except requests.exceptions.RequestException as e:
-        if "401" in str(e) or "Unauthorized" in str(e):
-            print(f"    API Key invalid or expired")
-        elif "429" in str(e):
-            print(f"    Rate limited")
-        else:
-            print(f"    Network error: {str(e)[:40]}")
-        return None
-    except Exception as e:
-        print(f"    Error: {str(e)[:50]}")
-        return None
-
-
-def fetch_japan_stocks_api(symbol, api_key):
-    """
-    Fetch Japanese stock data from JPFUNDS API
-    Symbol format: "7203.T" -> use "7203" for API
-    """
-    if not api_key or len(api_key) < 10:
-        return None
-    
-    try:
-        # シンボルを処理 (例: "7203.T" -> "7203")
-        symbol_code = symbol.split('.')[0] if '.' in symbol else symbol
-        
-        # JPFUNDS APIエンドポイント
-        url = f"https://jpfunds.com/api/json/stocks/{symbol_code}/daily"
-        params = {
-            "apikey": api_key,
-            "days": 180
-        }
-        
-        response = requests.get(url, params=params, timeout=30)
-        response.raise_for_status()
-        data = response.json()
-        
-        # レスポンス形式チェック
-        if not isinstance(data, list) or len(data) == 0:
-            print(f"    No data returned")
-            return None
-        
-        # DataFrameに変換
-        records = []
-        for item in data:
-            try:
-                records.append({
-                    'Date': pd.to_datetime(item['date']),
-                    'Open': float(item.get('open', 0)),
-                    'High': float(item.get('high', 0)),
-                    'Low': float(item.get('low', 0)),
-                    'Close': float(item.get('close', 0)),
-                    'Volume': float(item.get('volume', 0))
-                })
             except (KeyError, ValueError):
                 continue
         
         if not records:
-            print(f"    No valid records found")
             return None
         
         df = pd.DataFrame(records)
         df = df.sort_values('Date').reset_index(drop=True)
         
-        print(f"    ✓ Got {len(df)} days of data")
+        print(f"    ✓ Got {len(df)} days from Polygon.io")
         return df
     
-    except requests.exceptions.RequestException as e:
-        if "401" in str(e):
-            print(f"    API Key invalid")
-        elif "429" in str(e):
-            print(f"    Rate limited")
-        else:
-            print(f"    Network error: {str(e)[:40]}")
-        return None
-    except Exception as e:
-        print(f"    Error: {str(e)[:50]}")
+    except:
         return None
 
 
-def fetch_data_with_fallback(ticker, market_type='us', polygon_key='', japan_key=''):
+def fetch_data_with_fallback(ticker, market_type='us', polygon_key=''):
     """
-    Fetch data based on market type
-    US: Polygon.io API
-    JP: JPFUNDS API
-    Both fallback to cache
+    Fetch data using best available source
+    US: Try Polygon.io first, then yfinance
+    JP: yfinance only
     """
-    # Step 1: API から取得を試みる
+    # Step 1: Try API source
     if market_type == 'us' and polygon_key and len(polygon_key) > 10:
         df_api = fetch_polygon_io(ticker, polygon_key)
         if df_api is not None and not df_api.empty:
-            # キャッシュに保存
             cache_file = f"{CACHE_DIR}/{ticker}.csv"
             df_api.to_csv(cache_file, index=False)
             return df_api
     
-    elif market_type == 'jp' and japan_key and len(japan_key) > 10:
-        df_api = fetch_japan_stocks_api(ticker, japan_key)
-        if df_api is not None and not df_api.empty:
-            # キャッシュに保存
-            cache_file = f"{CACHE_DIR}/{ticker}.csv"
-            df_api.to_csv(cache_file, index=False)
-            return df_api
+    # Step 2: Fallback to yfinance (works for both US and JP)
+    print(f"    Fetching from yfinance...", end=" ")
+    df_yf = fetch_yfinance(ticker)
     
-    # Step 2: キャッシュから読み込み
+    if df_yf is not None and not df_yf.empty:
+        cache_file = f"{CACHE_DIR}/{ticker}.csv"
+        df_yf.to_csv(cache_file, index=False)
+        return df_yf
+    
+    # Step 3: Use cache
     cache_file = f"{CACHE_DIR}/{ticker}.csv"
     if os.path.exists(cache_file):
         try:
             df = pd.read_csv(cache_file, parse_dates=['Date'])
-            print(f"    ✓ Using cache")
+            print(f"Using cache")
             return df
         except:
             return None
@@ -414,33 +359,27 @@ def fetch_data_with_fallback(ticker, market_type='us', polygon_key='', japan_key
     return None
 
 
-def predict_ticker(ticker, market_type='us', polygon_key='', japan_key=''):
+def predict_ticker(ticker, market_type='us', polygon_key=''):
     """Predict for a single ticker using LightGBM"""
     try:
-        # データ取得（APIまたはキャッシュ）
-        df = fetch_data_with_fallback(ticker, market_type, polygon_key, japan_key)
+        df = fetch_data_with_fallback(ticker, market_type, polygon_key)
         
         if df is None or df.empty:
             return None
         
-        # 特徴量作成
         df_features = create_features(df.copy())
         if df_features is None or df_features.empty:
             return None
         
-        # モデル訓練/読み込み
         model, feature_cols, scaler = train_or_load_model(ticker, df_features)
         if model is None:
             return None
         
-        # 最新データ取得
         latest_row = df_features.iloc[-1].to_dict()
         
-        # 特徴量抽出
         X_latest = pd.DataFrame([latest_row])[feature_cols].fillna(0)
         X_latest_scaled = scaler.transform(X_latest)
         
-        # 予測
         pred_proba = model.predict_proba(X_latest_scaled)[0]
         pred_class = model.predict(X_latest_scaled)[0]
         
@@ -483,73 +422,40 @@ def predict_ticker(ticker, market_type='us', polygon_key='', japan_key=''):
         return None
 
 
-def fetch_market_context(api_key):
-    """Fetch market context (SPY)"""
-    try:
-        df = fetch_polygon_io("SPY", api_key)
-        
-        if df is None or df.empty or len(df) < 2:
-            return None
-        
-        df = df.sort_values('Date')
-        latest = df.iloc[-1]
-        prev = df.iloc[-2]
-        
-        spy_close = float(latest['Close'])
-        spy_change = float((latest['Close'] - prev['Close']) / prev['Close'] * 100)
-        
-        return {
-            'spy_close': spy_close,
-            'spy_change_pct': spy_change
-        }
-    
-    except Exception as e:
-        print(f"Error fetching market context: {e}")
-        return None
-
-
 def main():
     """Main execution"""
     print("=" * 60)
-    print("NOROSHI Prediction System - Multi-API Edition")
+    print("NOROSHI Prediction System - Unified Edition")
     print(f"Time: {datetime.now().isoformat()}")
     print("=" * 60)
     
     predictions = []
     
-    # US市場予測（Polygon.io）
-    print("\n[US Market - Polygon.io]")
+    # US市場予測
+    print("\n[US Market]")
     for ticker in TICKERS_US:
         print(f"Processing {ticker}...", end=" ")
-        pred = predict_ticker(ticker, 'us', POLYGON_API_KEY, '')
+        pred = predict_ticker(ticker, 'us', POLYGON_API_KEY)
         if pred:
             predictions.append(pred)
             print(f"✓ ({pred['prediction_details']['direction']})")
         else:
             print("✗")
         
-        time.sleep(0.2)
+        time.sleep(0.5)
     
-    # 日本市場予測（JPFUNDS API）
-    print("\n[Japanese Market - JPFUNDS API]")
+    # 日本市場予測
+    print("\n[Japanese Market]")
     for ticker in TICKERS_JP:
         print(f"Processing {ticker}...", end=" ")
-        pred = predict_ticker(ticker, 'jp', '', JPFUNDS_API_KEY)
+        pred = predict_ticker(ticker, 'jp', '')
         if pred:
             predictions.append(pred)
             print(f"✓ ({pred['prediction_details']['direction']})")
         else:
             print("✗")
         
-        time.sleep(0.2)
-    
-    # 市場コンテキスト（SPY - US株）
-    print("\n[Market Context]")
-    market_ctx = fetch_market_context(POLYGON_API_KEY)
-    if market_ctx:
-        print(f"SPY: {market_ctx['spy_close']:.2f} ({market_ctx['spy_change_pct']:+.2f}%)")
-    else:
-        print("✗ Market context unavailable")
+        time.sleep(0.5)
     
     # 結果保存
     if predictions:
