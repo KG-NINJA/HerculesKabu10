@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  run:
+  prediction:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -25,19 +25,10 @@ jobs:
     - name: Run prediction #KGNINJA
       run: python simple_daily_prediction.py
 
-    - name: Run CV evaluation #KGNINJA
-      run: python nvda_direction_codex_runner.py
-
-    - name: Generate charts #KGNINJA
-      run: python scripts/generate_charts.py
-
-    - name: Update README #KGNINJA
-      run: python scripts/generate_readme.py
-
-    - name: Commit & Push #KGNINJA
+    - name: Commit JSON #KGNINJA
       run: |
         git config --local user.email "actions@github.com"
         git config --local user.name "github-actions"
-        git add .
-        git commit -m "[auto] NOROSHI update #KGNINJA" || echo "No changes"
+        git add data/daily_predictions/latest_predictions.json
+        git commit -m "[auto] prediction json update #KGNINJA" || echo "No changes"
         git push
