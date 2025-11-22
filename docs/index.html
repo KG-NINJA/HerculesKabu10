@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<title>Stock Auto Predictor Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+body { font-family: sans-serif; margin: 20px; }
+.chart-container { width: 90%; margin-bottom: 60px; }
+h2 { margin-top: 40px; }
+</style>
+</head>
+
+<body>
+<h1>📈 Auto Prediction Dashboard</h1>
+
+<p>最新の予測データは GitHub Actions により毎日更新されます。</p>
+
+<div class="chart-container">
+  <h2>NVDA 信頼スコア 推移</h2>
+  <canvas id="confidenceChart"></canvas>
+</div>
+
+<div class="chart-container">
+  <h2>NVDA シグナル 強度</h2>
+  <canvas id="signalChart"></canvas>
+</div>
+
+<script>
+async function loadJSON(path) {
+  const res = await fetch(path);
+  return await res.json();
+}
+
+async function loadLogs() {
+  const logsList = await fetch("logs_index.json").then(r => r.json());
+  const logs = [];
+  for (const file of logsList) {
+      logs.push(await loadJSON(`../logs/${file}`));
+  }
+  return logs;
+}
+
+async function main() {
+  const logs = await loadLogs();
+  
+  const labels = logs.map(l => l.timestamp);
+  const confidence = logs.map(l => l.confidence);
+  const signalStrength = logs.map(l => l.signal_strength);
+
+  new Chart(document.getElementById("confidenceChart"), {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Confidence',
+          data: confidence,
+          borderColor: 'blue'
+        }]
+      }
+  });
+
+  new Chart(document.getElementById("signalChart"), {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Signal Strength',
+          data: signalStrength,
+          backgroundColor: 'orange'
+        }]
+      }
+  });
+}
+
+main();
+</script>
+
+</body>
+</html>
