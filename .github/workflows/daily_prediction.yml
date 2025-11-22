@@ -1,4 +1,4 @@
-yamlname: Daily Stock Prediction
+name: Daily Stock Prediction
 
 on:
   schedule:
