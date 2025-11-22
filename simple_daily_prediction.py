@@ -239,31 +239,57 @@ def load_from_cache(ticker):
         return None
     
     try:
-        # CSVを読み込む（インデックスなし、ヘッダー行あり）
+        # CSVを読み込む
         df = pd.read_csv(cache_file)
         
-        # 最初の列を日付として解析
-        # yfinanceのデフォルト出力形式に対応
-        first_col = df.columns[0]
-        if first_col.lower() == 'date' or first_col == 'Datetime':
-            df['Date'] = pd.to_datetime(df[first_col])
-            df = df.drop(columns=[first_col])
-        else:
-            # インデックスが日付の場合
-            df.index = pd.to_datetime(df.index)
-            df = df.reset_index()
-            if df.columns[0] != 'Date':
-                df.rename(columns={df.columns[0]: 'Date'}, inplace=True)
+        # 列名のクリーンアップ
+        df.columns = [col.strip() for col in df.columns]
         
-        # 列名を統一
-        df.columns = [col.strip().upper() if col.upper() != 'DATE' else 'Date' 
-                      for col in df.columns]
+        # Date列を特定（複数の形式に対応）
+        date_col = None
+        for col in df.columns:
+            if col.upper().startswith('DATE'):
+                date_col = col
+                break
         
-        # 必須列があるか確認
+        if date_col:
+            df['Date'] = pd.to_datetime(df[date_col])
+            df = df.drop(columns=[col for col in df.columns if col.upper().startswith('DATE') and col != 'Date'])
+        
+        # 必要な列を抽出（ティッカー名を除去）
+        # 例: 'CLOSE_AAPL' -> 'CLOSE'
+        new_cols = {}
+        for col in df.columns:
+            col_upper = col.upper()
+            
+            # 既に標準形式の場合
+            if col_upper in ['OPEN', 'HIGH', 'LOW', 'CLOSE', 'VOLUME', 'ADJ CLOSE']:
+                new_cols[col] = col_upper
+            # ティッカー名が含まれている場合
+            else:
+                # 最後の部分（ティッカー名）を削除
+                parts = col_upper.rsplit('_', 1)
+                if len(parts) == 2:
+                    base_name = parts[0].strip()
+                    if base_name in ['OPEN', 'HIGH', 'LOW', 'CLOSE', 'VOLUME', 'ADJ CLOSE', 'ADJCLOSE']:
+                        new_cols[col] = base_name if base_name != 'ADJCLOSE' else 'ADJ CLOSE'
+        
+        df = df.rename(columns=new_cols)
+        
+        # 必須列を確認
         required = ['CLOSE', 'HIGH', 'LOW', 'OPEN', 'VOLUME']
-        if not all(col in df.columns for col in required):
+        available = [col for col in df.columns if col in required]
+        
+        if len(available) < len(required):
             print(f"Missing required columns. Available: {list(df.columns)}")
             return None
+        
+        # 必要な列だけを抽出
+        df = df[['Date'] + available]
+        
+        # Date列を正規化
+        if 'Date' in df.columns:
+            df['Date'] = pd.to_datetime(df['Date'])
         
         # データを日付順にソート
         df = df.sort_values('Date').reset_index(drop=True)
