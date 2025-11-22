@@ -1,53 +1,47 @@
-# scripts/generate_charts.py
-# 自動チャート生成スクリプト #KGNINJA
+#!/usr/bin/env python3
+# Generate charts for NOROSHI Dashboard #KGNINJA
 
 import json
-import pandas as pd
-import matplotlib.pyplot as plt
 from pathlib import Path
+import matplotlib.pyplot as plt
 
 BASE = Path(__file__).resolve().parents[1]
-DATA = BASE / "data"
-PRED_FILE = DATA / "daily_predictions" / "latest_predictions.json"
-CHART_DIR = DATA / "charts"
-CHART_DIR.mkdir(exist_ok=True)
 
-def add_tag(fig):
-    fig.text(0.95, 0.02, "#KGNINJA", ha="right", fontsize=8, alpha=0.4)
+# 修正ポイント（新パスに変更）
+PRED_FILE = BASE / "data" / "daily_predictions" / "latest_predictions.json"
+OUT_DIR = BASE / "analytics"
+OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 def generate_nvda_chart():
+    if not PRED_FILE.exists():
+        raise FileNotFoundError(f"Prediction file not found: {PRED_FILE}")
+
     payload = json.loads(PRED_FILE.read_text(encoding="utf-8"))
-    nvda = [
-        x for x in payload["markets"]["米国市場"]
-        if x["ticker"] == "NVDA"
-    ][0]
 
-    fig, ax = plt.subplots(figsize=(6,4))
-    ax.bar(["Current", "Predicted"], [nvda["current_price"], nvda["predicted_price"]])
-    ax.set_title(f"NVDA Prediction ({nvda['trend']})")
-    ax.set_ylabel("Price ($)")
+    nvda = None
+    for item in payload["markets"]["米国市場"]:
+        if item["ticker"] == "NVDA":
+            nvda = item
+            break
 
-    add_tag(fig)
-    fig.savefig(CHART_DIR / "nvda_signal.png", dpi=150)
+    if not nvda:
+        raise ValueError("NVDA prediction not found in JSON")
+
+    current = nvda["current_price"]
+    predicted = nvda["predicted_price"]
+
+    plt.figure(figsize=(6, 4))
+    plt.bar(["Current", "Predicted"], [current, predicted])
+    plt.title("NVDA Prediction #KGNINJA")
+    plt.ylabel("Price (USD)")
+
+    plt.savefig(OUT_DIR / "nvda_prediction.png")
     plt.close()
 
-def generate_context_chart():
-    payload = json.loads(PRED_FILE.read_text(encoding="utf-8"))
-    ctx = payload["market_context"]
-
-    fig, ax = plt.subplots(figsize=(6,4))
-    ax.bar(["SPY %", "VIX %"], [ctx["spy_change_pct"], ctx["vix_change_pct"]])
-    ax.set_title("Market Context (SPY / VIX)")
-    ax.set_ylabel("% change")
-
-    add_tag(fig)
-    fig.savefig(CHART_DIR / "spy_vix_context.png", dpi=150)
-    plt.close()
 
 def main():
     generate_nvda_chart()
-    generate_context_chart()
-    print("[charts] Generated charts #KGNINJA")
+    print("Charts generated. #KGNINJA")
 
 if __name__ == "__main__":
     main()
