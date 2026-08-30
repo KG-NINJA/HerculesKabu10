@@ -2,7 +2,7 @@ name: NOROSHI Charts + Dashboard
 
 on:
   workflow_run:
-    workflows: ["NOROSHI Daily Prediction"]
+    workflows: ["Daily Stock Prediction"]
     types:
       - completed
 
