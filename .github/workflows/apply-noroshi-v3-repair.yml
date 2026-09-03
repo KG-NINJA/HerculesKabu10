@@ -1,0 +1,68 @@
+name: Apply NOROSHI v3 repair
+
+on:
+  push:
+    branches:
+      - codex/restore-live-prediction-pipeline
+    paths:
+      - ".github/workflows/apply-noroshi-v3-repair.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-noroshi-v3-repair
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repair branch
+        uses: actions/checkout@v7
+        with:
+          ref: codex/restore-live-prediction-pipeline
+          fetch-depth: 0
+
+      - name: Reconstruct verified repair bundle
+        shell: bash
+        run: |
+          cat .repair/noroshi-part-*.b64 | base64 --decode > /tmp/noroshi-v3-repair.tar.gz
+          echo "c4c03254cc97fb95cabd49010e206e3d0041183b0d374541876ff78144cb9315  /tmp/noroshi-v3-repair.tar.gz" | sha256sum --check
+
+      - name: Replace invalid legacy runtime state
+        shell: bash
+        run: |
+          rm -rf daily_predictions models logs __pycache__ data
+          rm -f analytics/market_context.png analytics/nvda_prediction.png
+          rm -f docs/assets/market_context.png docs/assets/nvda_prediction.png
+          tar -xzf /tmp/noroshi-v3-repair.tar.gz
+          rm -rf .repair
+          rm -f .github/workflows/apply-noroshi-v3-repair.yml
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install and validate
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m compileall -q noroshi noroshi_pipeline.py simple_daily_prediction.py prediction_data_manager.py nvda_direction_codex_runner.py generate_graphs.py scripts tests/test_pipeline.py
+          python -m unittest tests/test_pipeline.py -v
+          python scripts/live_data_smoke.py --tickers NVDA 7203.T
+
+      - name: Commit repair
+        shell: bash
+        run: |
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git add -A
+          git commit -m "Restore fresh auditable prediction pipeline"
+          git push origin HEAD:codex/restore-live-prediction-pipeline
