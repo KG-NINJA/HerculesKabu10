@@ -41,7 +41,6 @@ jobs:
           rm -f docs/assets/market_context.png docs/assets/nvda_prediction.png
           tar -xzf /tmp/noroshi-v3-repair.tar.gz
           rm -rf .repair
-          rm -f .github/workflows/apply-noroshi-v3-repair.yml
 
       - name: Set up Python
         uses: actions/setup-python@v7
@@ -58,9 +57,13 @@ jobs:
           python -m unittest tests/test_pipeline.py -v
           python scripts/live_data_smoke.py --tickers NVDA 7203.T
 
-      - name: Commit repair
+      - name: Commit non-workflow repair
         shell: bash
         run: |
+          # GITHUB_TOKEN cannot update workflow files. Restore them here; the
+          # connector applies the reviewed workflow changes after this run.
+          git restore --source=HEAD --staged --worktree .github/workflows
+          git clean -f .github/workflows
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config user.name "github-actions[bot]"
           git add -A
