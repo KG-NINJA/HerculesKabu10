@@ -1,0 +1,116 @@
+{
+  "schema_version": 2,
+  "model_version": "noroshi-3.0.0",
+  "updated_at": "2026-09-03T15:29:37.838229Z",
+  "health": "healthy",
+  "message": "pipeline completed",
+  "valid_tickers": 10,
+  "configured_tickers": 10,
+  "archive": "data/predictions_v2/2026-09-03_46ee587af081.json",
+  "data_signature": "46ee587af08159e50def1e7e2cfe4a77e2e54a7b6198f53831a43f311a057338",
+  "warnings": [
+    "live accuracy is provisional: only 0 direction-evaluable v2 predictions"
+  ],
+  "tickers": [
+    {
+      "ticker": "AAPL",
+      "market": "US",
+      "status": "fresh",
+      "source": "download",
+      "rows": 1254,
+      "as_of": "2026-09-02",
+      "age_days": 1,
+      "error": null
+    },
+    {
+      "ticker": "GOOGL",
+      "market": "US",
+      "status": "fresh",
+      "source": "download",
+      "rows": 1254,
+      "as_of": "2026-09-02",
+      "age_days": 1,
+      "error": null
+    },
+    {
+      "ticker": "MSFT",
+      "market": "US",
+      "status": "fresh",
+      "source": "download",
+      "rows": 1254,
+      "as_of": "2026-09-02",
+      "age_days": 1,
+      "error": null
+    },
+    {
+      "ticker": "NVDA",
+      "market": "US",
+      "status": "fresh",
+      "source": "download",
+      "rows": 1254,
+      "as_of": "2026-09-02",
+      "age_days": 1,
+      "error": null
+    },
+    {
+      "ticker": "TSLA",
+      "market": "US",
+      "status": "fresh",
+      "source": "download",
+      "rows": 1254,
+      "as_of": "2026-09-02",
+      "age_days": 1,
+      "error": null
+    },
+    {
+      "ticker": "7203.T",
+      "market": "JP",
+      "status": "fresh",
+      "source": "download",
+      "rows": 1223,
+      "as_of": "2026-09-03",
+      "age_days": 1,
+      "error": null
+    },
+    {
+      "ticker": "6758.T",
+      "market": "JP",
+      "status": "fresh",
+      "source": "download",
+      "rows": 1223,
+      "as_of": "2026-09-03",
+      "age_days": 1,
+      "error": null
+    },
+    {
+      "ticker": "9984.T",
+      "market": "JP",
+      "status": "fresh",
+      "source": "download",
+      "rows": 1223,
+      "as_of": "2026-09-03",
+      "age_days": 1,
+      "error": null
+    },
+    {
+      "ticker": "6861.T",
+      "market": "JP",
+      "status": "fresh",
+      "source": "download",
+      "rows": 1223,
+      "as_of": "2026-09-03",
+      "age_days": 1,
+      "error": null
+    },
+    {
+      "ticker": "8035.T",
+      "market": "JP",
+      "status": "fresh",
+      "source": "download",
+      "rows": 1223,
+      "as_of": "2026-09-03",
+      "age_days": 1,
+      "error": null
+    }
+  ]
+}

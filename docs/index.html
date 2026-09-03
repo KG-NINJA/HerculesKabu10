@@ -1,21 +1,81 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NOROSHI Pipeline Migration</title>
-<style>
-body { font-family: system-ui, sans-serif; max-width: 760px; margin: 48px auto; padding: 0 20px; line-height: 1.7; }
-.notice { border: 1px solid #999; border-radius: 12px; padding: 20px; }
-code { background: #eee; color: #111; padding: 2px 5px; border-radius: 4px; }
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NOROSHI Auditable Forecast Dashboard</title>
+  <style>
+    :root { color-scheme: light dark; --bg:#0d1117; --panel:#161b22; --line:#30363d; --text:#e6edf3; --muted:#8b949e; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,"Segoe UI",sans-serif; line-height:1.55; }
+    main { width:min(1280px,94vw); margin:0 auto; padding:32px 0 64px; }
+    h1 { margin-bottom:4px; } h2 { margin-top:34px; }
+    .subtle, small { color:var(--muted); }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:14px; }
+    .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px; }
+    .metric { font-size:1.7rem; font-weight:700; }
+    .scroll { overflow-x:auto; border:1px solid var(--line); border-radius:12px; }
+    table { width:100%; border-collapse:collapse; min-width:1120px; background:var(--panel); }
+    th,td { padding:11px 12px; border-bottom:1px solid var(--line); text-align:right; vertical-align:top; }
+    th:first-child,td:first-child,th:nth-child(2),td:nth-child(2) { text-align:left; }
+    th { position:sticky; top:0; background:var(--panel); }
+    img { width:100%; max-width:1100px; background:white; border-radius:12px; }
+    .signal { display:inline-block; min-width:56px; text-align:center; border:1px solid var(--line); border-radius:999px; padding:2px 8px; }
+    .buy { border-color:#3fb950; } .sell { border-color:#f85149; } .hold { border-color:#d29922; }
+    code { background:var(--panel); padding:2px 5px; border-radius:5px; } a { color:#58a6ff; }
+    .warning { border-left:4px solid #d29922; }
+  </style>
 </head>
 <body>
-<h1>NOROSHI Prediction Dashboard</h1>
-<div class="notice">
-<h2>Fresh-data pipeline migration</h2>
-<p>古い市場キャッシュから生成された予測は公開対象から外しました。次の正常なDaily Stock Prediction実行で、最新OHLCV、walk-forward検証、翌取引日のlive実績を含むダッシュボードへ自動更新されます。</p>
-<p><code>model_probability</code>は過去の的中率として表示しません。</p>
-</div>
+<main>
+  <h1>NOROSHI Auditable Forecast Dashboard</h1>
+  <p class="subtle">次営業日終値方向の研究用予測。売買の自動執行や利益保証は行いません。</p>
+
+  <div class="grid">
+    <section class="card"><div class="subtle">システム状態</div><div class="metric">正常</div></section>
+    <section class="card"><div class="subtle">生成日時 UTC</div><div class="metric" style="font-size:1rem">2026-09-03T15:29:37.838229Z</div></section>
+    <section class="card"><div class="subtle">市場データ基準日</div><div class="metric" style="font-size:1rem">2026-09-02 / 2026-09-03</div></section>
+    <section class="card"><div class="subtle">有効予測</div><div class="metric">10</div></section>
+    <section class="card"><div class="subtle">Walk-forward方向精度</div><div class="metric">50.0%</div><small>baseline 49.6%</small></section>
+    <section class="card"><div class="subtle">直近90日Live方向精度</div><div class="metric">蓄積待ち</div><small>0件 / baseline 蓄積待ち</small></section>
+  </div>
+
+  <section class="card warning">
+    <h2 style="margin-top:0">状態と注意</h2>
+    <ul><li>live accuracy is provisional: only 0 direction-evaluable v2 predictions</li></ul>
+    <p><strong>Confidenceは過去の的中率ではありません。</strong> 今回の判定に対するモデルのクラス確率です。実際の精度はWalk-forward検証と、保存後に確定したLive実績で別に測定します。</p>
+    <p>30件未満のLive評価は暫定値であり、対外的な精度主張には使いません。</p>
+  </section>
+
+  <h2>最新予測</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>銘柄</th><th>基準日</th><th>終値</th><th>予測値</th><th>予測騰落</th><th>方向</th><th>上昇確率</th><th>Confidence</th><th>時系列検証</th><th>品質</th><th>研究Signal</th></tr></thead>
+    <tbody><tr><td><strong>6758.T</strong><br><small>ソニーグループ</small></td><td>2026-09-03</td><td>¥3,902</td><td>¥3,905</td><td>+0.09%</td><td>強気</td><td>50.9%</td><td>50.9%<br><small>モデル確率</small></td><td>50.0%<br><small>baseline 53.0%</small></td><td>CAUTION</td><td><span class='signal hold'>HOLD</span></td></tr><tr><td><strong>6861.T</strong><br><small>キーエンス</small></td><td>2026-09-03</td><td>¥77,850</td><td>¥77,503</td><td>-0.45%</td><td>弱気</td><td>34.3%</td><td>65.7%<br><small>モデル確率</small></td><td>53.5%<br><small>baseline 49.0%</small></td><td>PASS</td><td><span class='signal sell'>SELL</span></td></tr><tr><td><strong>7203.T</strong><br><small>トヨタ自動車</small></td><td>2026-09-03</td><td>¥3,133</td><td>¥3,135</td><td>+0.05%</td><td>強気</td><td>50.4%</td><td>50.4%<br><small>モデル確率</small></td><td>52.0%<br><small>baseline 54.0%</small></td><td>CAUTION</td><td><span class='signal hold'>HOLD</span></td></tr><tr><td><strong>8035.T</strong><br><small>東京エレクトロン</small></td><td>2026-09-03</td><td>¥53,420</td><td>¥53,767</td><td>+0.65%</td><td>強気</td><td>65.3%</td><td>65.3%<br><small>モデル確率</small></td><td>52.5%<br><small>baseline 45.5%</small></td><td>PASS</td><td><span class='signal buy'>BUY</span></td></tr><tr><td><strong>9984.T</strong><br><small>ソフトバンクグループ</small></td><td>2026-09-03</td><td>¥5,026</td><td>¥5,047</td><td>+0.42%</td><td>強気</td><td>60.4%</td><td>60.4%<br><small>モデル確率</small></td><td>43.5%<br><small>baseline 48.5%</small></td><td>CAUTION</td><td><span class='signal hold'>HOLD</span></td></tr><tr><td><strong>AAPL</strong><br><small>Apple</small></td><td>2026-09-02</td><td>$324.96</td><td>$324.50</td><td>-0.14%</td><td>弱気</td><td>43.5%</td><td>56.5%<br><small>モデル確率</small></td><td>52.0%<br><small>baseline 48.0%</small></td><td>PASS</td><td><span class='signal hold'>HOLD</span></td></tr><tr><td><strong>GOOGL</strong><br><small>Alphabet</small></td><td>2026-09-02</td><td>$337.12</td><td>$336.95</td><td>-0.05%</td><td>弱気</td><td>46.9%</td><td>53.1%<br><small>モデル確率</small></td><td>48.5%<br><small>baseline 47.5%</small></td><td>CAUTION</td><td><span class='signal hold'>HOLD</span></td></tr><tr><td><strong>MSFT</strong><br><small>Microsoft</small></td><td>2026-09-02</td><td>$496.82</td><td>$498.36</td><td>+0.31%</td><td>強気</td><td>62.3%</td><td>62.3%<br><small>モデル確率</small></td><td>47.0%<br><small>baseline 52.0%</small></td><td>CAUTION</td><td><span class='signal hold'>HOLD</span></td></tr><tr><td><strong>NVDA</strong><br><small>NVIDIA</small></td><td>2026-09-02</td><td>$224.41</td><td>$224.20</td><td>-0.09%</td><td>弱気</td><td>49.1%</td><td>50.9%<br><small>モデル確率</small></td><td>50.0%<br><small>baseline 48.5%</small></td><td>PASS</td><td><span class='signal hold'>HOLD</span></td></tr><tr><td><strong>TSLA</strong><br><small>Tesla</small></td><td>2026-09-02</td><td>$357.01</td><td>$357.34</td><td>+0.09%</td><td>強気</td><td>56.9%</td><td>56.9%<br><small>モデル確率</small></td><td>50.5%<br><small>baseline 50.5%</small></td><td>PASS</td><td><span class='signal hold'>HOLD</span></td></tr></tbody>
+  </table></div>
+
+  <h2>予測チャート</h2>
+  <img src="assets/latest_forecast.png" alt="Latest forecast chart">
+  <h2>精度とbaseline</h2>
+  <img src="assets/accuracy.png" alt="Accuracy versus baseline chart">
+
+  <h2>Live実績（銘柄別）</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>銘柄</th><th>確定件数</th><th>方向精度</th><th>baseline</th><th>差</th><th>Return MAE</th></tr></thead>
+    <tbody><tr><td colspan="6">schema-v2予測の翌取引日実績を蓄積中です。</td></tr></tbody>
+  </table></div>
+
+  <h2>データ鮮度</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>Ticker</th><th>市場</th><th>最終日</th><th>取得元</th><th>状態</th><th>経過日</th><th>エラー</th></tr></thead>
+    <tbody><tr><td>AAPL</td><td>US</td><td>2026-09-02</td><td>download</td><td>fresh</td><td>1</td><td></td></tr><tr><td>GOOGL</td><td>US</td><td>2026-09-02</td><td>download</td><td>fresh</td><td>1</td><td></td></tr><tr><td>MSFT</td><td>US</td><td>2026-09-02</td><td>download</td><td>fresh</td><td>1</td><td></td></tr><tr><td>NVDA</td><td>US</td><td>2026-09-02</td><td>download</td><td>fresh</td><td>1</td><td></td></tr><tr><td>TSLA</td><td>US</td><td>2026-09-02</td><td>download</td><td>fresh</td><td>1</td><td></td></tr><tr><td>7203.T</td><td>JP</td><td>2026-09-03</td><td>download</td><td>fresh</td><td>1</td><td></td></tr><tr><td>6758.T</td><td>JP</td><td>2026-09-03</td><td>download</td><td>fresh</td><td>1</td><td></td></tr><tr><td>9984.T</td><td>JP</td><td>2026-09-03</td><td>download</td><td>fresh</td><td>1</td><td></td></tr><tr><td>6861.T</td><td>JP</td><td>2026-09-03</td><td>download</td><td>fresh</td><td>1</td><td></td></tr><tr><td>8035.T</td><td>JP</td><td>2026-09-03</td><td>download</td><td>fresh</td><td>1</td><td></td></tr></tbody>
+  </table></div>
+
+  <section class="card">
+    <h2 style="margin-top:0">評価方法</h2>
+    <p>毎回、最新OHLCVを取得し、未完了セッションを除外してからLightGBM分類器・回帰器を再学習します。モデル内部評価には、未来データを訓練側へ混ぜないexpanding <code>TimeSeriesSplit</code>と1期間のgapを使います。</p>
+    <p>実運用評価は、変更不能なschema-v2予測を次の完成した市場セッションの終値と後日照合します。2025年11月で停止していた旧キャッシュ由来の予測は集計しません。</p>
+    <p>機械可読データ: <a href="data/latest_predictions.json">latest_predictions.json</a> / <a href="data/metrics.json">metrics.json</a> / <a href="data/status.json">status.json</a> / <a href="data/live_results.json">live_results.json</a></p>
+  </section>
+</main>
 </body>
 </html>
