@@ -50,6 +50,9 @@ jobs:
     needs: charts
     if: ${{ needs.charts.result == 'success' }}
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout #KGNINJA
         uses: actions/checkout@v4
@@ -60,4 +63,5 @@ jobs:
           path: docs
 
       - name: Deploy #KGNINJA
+        id: deployment
         uses: actions/deploy-pages@v4
