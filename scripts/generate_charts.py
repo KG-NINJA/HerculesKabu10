@@ -1,54 +1,33 @@
 #!/usr/bin/env python3
-# NOROSHI Chart Generator #KGNINJA
+"""Regenerate only dashboard chart assets from canonical outputs."""
 
+from __future__ import annotations
+
+import argparse
 import json
+import sys
 from pathlib import Path
-import matplotlib.pyplot as plt
 
-BASE = Path(__file__).resolve().parents[1]
-DATA = BASE / "data"
-OUT = BASE / "analytics"
-OUT.mkdir(exist_ok=True)
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 
-
-def load_latest_predictions(data_dir=DATA):
-    prediction_files = sorted(data_dir.glob("predictions_*.json"))
-    if not prediction_files:
-        raise FileNotFoundError("No prediction files found")
-
-    payload = json.loads(prediction_files[-1].read_text(encoding="utf-8"))
-    if not isinstance(payload, list):
-        raise ValueError("Latest prediction payload must be a list")
-
-    us = [x for x in payload if not x["ticker"].endswith(".T")]
-    jp = [x for x in payload if x["ticker"].endswith(".T")]
-    return us, jp
+from noroshi.reporting import generate_charts  # noqa: E402
 
 
-def generate_chart():
-    us, jp = load_latest_predictions()
-
-    # US チャート
-    tickers = [x["ticker"] for x in us]
-    pct = [x["prediction_details"]["predicted_change_pct"] for x in us]
-
-    plt.figure(figsize=(10,5))
-    plt.bar(tickers, pct)
-    plt.title("US Market Prediction (%) #KGNINJA")
-    plt.savefig(OUT / "us_predictions.png")
-    plt.close()
-
-    # Japan チャート
-    tickers = [x["ticker"] for x in jp]
-    pct = [x["prediction_details"]["predicted_change_pct"] for x in jp]
-    plt.figure(figsize=(10,5))
-    plt.bar(tickers, pct, color="orange")
-    plt.title("Japan Market Prediction (%) #KGNINJA")
-    plt.savefig(OUT / "jp_predictions.png")
-    plt.close()
-
-    print("Charts generated #KGNINJA")
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--root", type=Path, default=ROOT)
+    args = parser.parse_args()
+    root = args.root.resolve()
+    try:
+        latest = json.loads((root / "data" / "latest_predictions.json").read_text(encoding="utf-8"))
+        metrics = json.loads((root / "data" / "metrics.json").read_text(encoding="utf-8"))
+        generate_charts(root, latest, metrics)
+    except Exception as error:
+        print(f"Chart generation failed: {type(error).__name__}: {error}", file=sys.stderr)
+        return 1
+    return 0
 
 
 if __name__ == "__main__":
-    generate_chart()
+    raise SystemExit(main())

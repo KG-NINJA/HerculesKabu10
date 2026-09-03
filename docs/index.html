@@ -1,45 +1,21 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8" />
-<title>NOROSHI Dashboard</title>
-<link rel="preconnect" href="https://fonts.googleapis.com" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NOROSHI Pipeline Migration</title>
 <style>
-body { font-family: 'Segoe UI', sans-serif; margin: 24px; }
-section { margin-bottom: 32px; }
-.card { border: 1px solid #ccc; padding: 16px; border-radius: 8px; max-width: 720px; }
-img { max-width: 100%; height: auto; }
+body { font-family: system-ui, sans-serif; max-width: 760px; margin: 48px auto; padding: 0 20px; line-height: 1.7; }
+.notice { border: 1px solid #999; border-radius: 12px; padding: 20px; }
+code { background: #eee; color: #111; padding: 2px 5px; border-radius: 4px; }
 </style>
 </head>
 <body>
-<h1>📈 NOROSHI Prediction Dashboard</h1>
-
-<p>最終更新: Pending run (自動生成 #KGNINJA)</p>
-<section class="card">
-  <h2>NVDA 予測スナップショット</h2>
-  <ul>
-    <li>現在価格: -</li>
-    <li>予測価格: -</li>
-    <li>予測変動率: -%</li>
-    <li>トレンド: -</li>
-
-  </ul>
-</section>
-<section>
-  <h2>チャート</h2>
-  <h3>NVDA 予測</h3>
-  <img src="assets/nvda_prediction.png" alt="NVDA Prediction" />
-  <h3>市場スナップショット (SPY / VIX)</h3>
-  <img src="assets/market_context.png" alt="Market Context" />
-</section>
-<section class="card">
-  <h2>市場コンテキスト</h2>
-  <ul>
-
-    <li>SPY 終値: -</li>
-    <li>VIX 終値: -</li>
-
-  </ul>
-</section>
+<h1>NOROSHI Prediction Dashboard</h1>
+<div class="notice">
+<h2>Fresh-data pipeline migration</h2>
+<p>古い市場キャッシュから生成された予測は公開対象から外しました。次の正常なDaily Stock Prediction実行で、最新OHLCV、walk-forward検証、翌取引日のlive実績を含むダッシュボードへ自動更新されます。</p>
+<p><code>model_probability</code>は過去の的中率として表示しません。</p>
+</div>
 </body>
 </html>

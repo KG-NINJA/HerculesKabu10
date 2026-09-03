@@ -1,27 +1,25 @@
 #!/usr/bin/env python3
-# Prediction Data Manager #KGNINJA
+"""Compatibility helpers for canonical NOROSHI JSON output files."""
+
+from __future__ import annotations
 
 from pathlib import Path
-import json
-from datetime import datetime
+from typing import Any
 
-BASE = Path(__file__).resolve().parents[0]
-OUT = BASE / "data" / "daily_predictions"
-OUT.mkdir(parents=True, exist_ok=True)
+from noroshi.reporting import write_json_atomic
+
+ROOT = Path(__file__).resolve().parent
+
 
 class PredictionDataManager:
+    @staticmethod
+    def save_latest(payload: dict[str, Any], root: Path = ROOT) -> Path:
+        path = root / "data" / "latest_predictions.json"
+        write_json_atomic(path, payload)
+        return path
 
     @staticmethod
-    def save_latest(payload):
-        latest = OUT / "latest_predictions.json"
-        latest.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-
-        # 履歴保存
-        history_dir = OUT / "history"
-        history_dir.mkdir(parents=True, exist_ok=True)
-
-        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-        (history_dir / f"{ts}.json").write_text(
-            json.dumps(payload, ensure_ascii=False, indent=2),
-            encoding="utf-8"
-        )
+    def save_metrics(payload: dict[str, Any], root: Path = ROOT) -> Path:
+        path = root / "data" / "metrics.json"
+        write_json_atomic(path, payload)
+        return path

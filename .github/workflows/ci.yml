@@ -1,0 +1,72 @@
+name: Prediction Pipeline CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+    paths:
+      - "noroshi/**"
+      - "config/**"
+      - "**/*.py"
+      - "requirements.txt"
+      - ".github/workflows/*.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: noroshi-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Compile Python sources
+        run: python -m compileall -q noroshi noroshi_pipeline.py simple_daily_prediction.py scripts tests
+
+      - name: Run unit and synthetic end-to-end tests
+        run: python -m unittest discover -s tests -v
+
+  live-data-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Verify current US and Japanese ingestion
+        run: python scripts/live_data_smoke.py --tickers NVDA 7203.T

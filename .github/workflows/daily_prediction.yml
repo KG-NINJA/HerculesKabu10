@@ -2,35 +2,80 @@ name: Daily Stock Prediction
 
 on:
   schedule:
-    - cron: '0 9 * * 1-5'
+    # 18:15 JST on weekdays: after the Japanese close and before the US open.
+    - cron: "15 9 * * 1-5"
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "noroshi/**"
+      - "config/markets.json"
+      - "noroshi_pipeline.py"
+      - "simple_daily_prediction.py"
+      - "prediction_data_manager.py"
+      - "nvda_direction_codex_runner.py"
+      - "requirements.txt"
+      - "scripts/**"
+      - ".github/workflows/daily_prediction.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: noroshi-daily-prediction
+  cancel-in-progress: false
+
+env:
+  PYTHONUNBUFFERED: "1"
+  TZ: Asia/Tokyo
 
 jobs:
   predict:
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 25
+
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.10'
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-    
-    - name: Run prediction
-      run: python simple_daily_prediction.py
-      env:
-        PYTHONUNBUFFERED: 1
-    
-    - name: Commit and push results
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        git add -A
-        git commit -m "Update predictions: $(date)" || echo "No changes to commit"
-        git push
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Run deterministic tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Refresh data, retrain, predict, evaluate, and render
+        # An unhealthy provider state is still rendered and committed so the
+        # public dashboard never silently presents stale data as current.
+        run: python simple_daily_prediction.py --allow-degraded-failure
+
+      - name: Validate output structure before publishing
+        run: python scripts/validate_outputs.py --allow-unhealthy
+
+      - name: Commit pipeline state and dashboard
+        run: |
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git add README.md docs
+          git add -A data
+          if git diff --cached --quiet; then
+            echo "No market-data or dashboard changes to commit."
+          else
+            git commit -m "Update fresh predictions and measured performance"
+            git fetch origin main
+            git rebase origin/main
+            git push origin HEAD:main
+          fi
+
+      - name: Enforce operational health
+        run: python scripts/validate_outputs.py

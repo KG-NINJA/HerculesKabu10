@@ -1,4 +1,16 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Legacy binary models are intentionally not used by the v3 pipeline.
+models/*.pkl
+
+# Generated analytics scratch files stay local; canonical Pages assets are tracked.
 *.png
 *.jpg
 analytics/*.png
 analytics/*.jpg
+!docs/assets/
+!docs/assets/*.png
