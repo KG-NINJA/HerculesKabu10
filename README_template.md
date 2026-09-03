@@ -1,15 +1,9 @@
-# NOROSHI Prediction System (#KGNINJA)
+# NOROSHI / HerculesKabu10
 
-## NVIDIA 今日の予測
-- 日付: {date}
-- 現在価格: ${nvda_price}
-- 予測価格: ${nvda_pred}
-- 予測変動率: {nvda_pct}%
-- トレンド: {trend}
+This compatibility template is intentionally static. The canonical README is generated from:
 
-## チャート
-### NVDA 予測
-![NVDA Prediction](analytics/nvda_prediction.png)
+- `data/latest_predictions.json`
+- `data/metrics.json`
+- `data/status.json`
 
-### SPY / VIX 市場状況
-![Market Context](analytics/market_context.png)
+Run `python scripts/generate_readme.py` after those files exist.

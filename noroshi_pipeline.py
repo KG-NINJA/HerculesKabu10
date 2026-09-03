@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Backward-compatible production entrypoint for NOROSHI."""
+"""Canonical command alias for the modular NOROSHI pipeline."""
 
 from noroshi.pipeline import main
 
