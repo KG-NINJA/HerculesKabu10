@@ -1,16 +1,14 @@
 {
   "schema_version": 2,
   "model_version": "noroshi-3.0.0",
-  "updated_at": "2026-09-08T13:34:21.182721Z",
+  "updated_at": "2026-09-09T13:41:38.244713Z",
   "health": "healthy",
   "message": "pipeline completed",
   "valid_tickers": 10,
   "configured_tickers": 10,
-  "archive": "data/predictions_v2/2026-09-08_27f47dce436c.json",
-  "data_signature": "27f47dce436cbcb71b296d22f8974bc3eb00bd68b19572d949970f2c8bcfa969",
-  "warnings": [
-    "live accuracy is provisional: only 25 direction-evaluable v2 predictions"
-  ],
+  "archive": "data/predictions_v2/2026-09-09_e9009609b0d5.json",
+  "data_signature": "e9009609b0d515a0535e2da83ad7a32ada2e67a5ca82d74a687e24ffe7cdec3f",
+  "warnings": [],
   "tickers": [
     {
       "ticker": "AAPL",
@@ -18,8 +16,8 @@
       "status": "fresh",
       "source": "download",
       "rows": 1254,
-      "as_of": "2026-09-04",
-      "age_days": 4,
+      "as_of": "2026-09-08",
+      "age_days": 1,
       "error": null
     },
     {
@@ -28,8 +26,8 @@
       "status": "fresh",
       "source": "download",
       "rows": 1254,
-      "as_of": "2026-09-04",
-      "age_days": 4,
+      "as_of": "2026-09-08",
+      "age_days": 1,
       "error": null
     },
     {
@@ -38,8 +36,8 @@
       "status": "fresh",
       "source": "download",
       "rows": 1254,
-      "as_of": "2026-09-04",
-      "age_days": 4,
+      "as_of": "2026-09-08",
+      "age_days": 1,
       "error": null
     },
     {
@@ -48,8 +46,8 @@
       "status": "fresh",
       "source": "download",
       "rows": 1254,
-      "as_of": "2026-09-04",
-      "age_days": 4,
+      "as_of": "2026-09-08",
+      "age_days": 1,
       "error": null
     },
     {
@@ -58,8 +56,8 @@
       "status": "fresh",
       "source": "download",
       "rows": 1254,
-      "as_of": "2026-09-04",
-      "age_days": 4,
+      "as_of": "2026-09-08",
+      "age_days": 1,
       "error": null
     },
     {
@@ -68,7 +66,7 @@
       "status": "fresh",
       "source": "download",
       "rows": 1223,
-      "as_of": "2026-09-08",
+      "as_of": "2026-09-09",
       "age_days": 0,
       "error": null
     },
@@ -78,7 +76,7 @@
       "status": "fresh",
       "source": "download",
       "rows": 1223,
-      "as_of": "2026-09-08",
+      "as_of": "2026-09-09",
       "age_days": 0,
       "error": null
     },
@@ -88,7 +86,7 @@
       "status": "fresh",
       "source": "download",
       "rows": 1223,
-      "as_of": "2026-09-08",
+      "as_of": "2026-09-09",
       "age_days": 0,
       "error": null
     },
@@ -98,7 +96,7 @@
       "status": "fresh",
       "source": "download",
       "rows": 1223,
-      "as_of": "2026-09-08",
+      "as_of": "2026-09-09",
       "age_days": 0,
       "error": null
     },
@@ -108,7 +106,7 @@
       "status": "fresh",
       "source": "download",
       "rows": 1223,
-      "as_of": "2026-09-08",
+      "as_of": "2026-09-09",
       "age_days": 0,
       "error": null
     }
