@@ -1,13 +1,13 @@
 {
   "schema_version": 2,
   "model_version": "noroshi-3.0.0",
-  "updated_at": "2026-09-18T13:34:27.738127Z",
+  "updated_at": "2026-09-21T15:52:54.061403Z",
   "health": "healthy",
   "message": "pipeline completed",
   "valid_tickers": 10,
   "configured_tickers": 10,
-  "archive": "data/predictions_v2/2026-09-18_ef2a0891a19f.json",
-  "data_signature": "ef2a0891a19fc53448cb13c6a885f00b0e2ec1c768f04fd888af5ebe635cd39b",
+  "archive": "data/predictions_v2/2026-09-18_42ddc65253bd.json",
+  "data_signature": "42ddc65253bd462fb47142a5a7825a149be96b2a2678b837d72e924989651d92",
   "warnings": [],
   "tickers": [
     {
@@ -16,8 +16,8 @@
       "status": "fresh",
       "source": "download",
       "rows": 1254,
-      "as_of": "2026-09-17",
-      "age_days": 1,
+      "as_of": "2026-09-18",
+      "age_days": 3,
       "error": null
     },
     {
@@ -26,8 +26,8 @@
       "status": "fresh",
       "source": "download",
       "rows": 1254,
-      "as_of": "2026-09-17",
-      "age_days": 1,
+      "as_of": "2026-09-18",
+      "age_days": 3,
       "error": null
     },
     {
@@ -36,8 +36,8 @@
       "status": "fresh",
       "source": "download",
       "rows": 1254,
-      "as_of": "2026-09-17",
-      "age_days": 1,
+      "as_of": "2026-09-18",
+      "age_days": 3,
       "error": null
     },
     {
@@ -46,8 +46,8 @@
       "status": "fresh",
       "source": "download",
       "rows": 1254,
-      "as_of": "2026-09-17",
-      "age_days": 1,
+      "as_of": "2026-09-18",
+      "age_days": 3,
       "error": null
     },
     {
@@ -56,8 +56,8 @@
       "status": "fresh",
       "source": "download",
       "rows": 1254,
-      "as_of": "2026-09-17",
-      "age_days": 1,
+      "as_of": "2026-09-18",
+      "age_days": 3,
       "error": null
     },
     {
@@ -67,7 +67,7 @@
       "source": "download",
       "rows": 1223,
       "as_of": "2026-09-18",
-      "age_days": 0,
+      "age_days": 4,
       "error": null
     },
     {
@@ -77,7 +77,7 @@
       "source": "download",
       "rows": 1223,
       "as_of": "2026-09-18",
-      "age_days": 0,
+      "age_days": 4,
       "error": null
     },
     {
@@ -87,7 +87,7 @@
       "source": "download",
       "rows": 1223,
       "as_of": "2026-09-18",
-      "age_days": 0,
+      "age_days": 4,
       "error": null
     },
     {
@@ -97,7 +97,7 @@
       "source": "download",
       "rows": 1223,
       "as_of": "2026-09-18",
-      "age_days": 0,
+      "age_days": 4,
       "error": null
     },
     {
@@ -107,7 +107,7 @@
       "source": "download",
       "rows": 1223,
       "as_of": "2026-09-18",
-      "age_days": 0,
+      "age_days": 4,
       "error": null
     }
   ]
