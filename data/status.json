@@ -1,13 +1,13 @@
 {
   "schema_version": 2,
   "model_version": "noroshi-3.0.0",
-  "updated_at": "2026-09-21T15:52:54.061403Z",
+  "updated_at": "2026-09-22T14:01:32.935481Z",
   "health": "healthy",
   "message": "pipeline completed",
   "valid_tickers": 10,
   "configured_tickers": 10,
-  "archive": "data/predictions_v2/2026-09-18_42ddc65253bd.json",
-  "data_signature": "42ddc65253bd462fb47142a5a7825a149be96b2a2678b837d72e924989651d92",
+  "archive": "data/predictions_v2/2026-09-21_940397e00799.json",
+  "data_signature": "940397e00799004fff24adbc4acfc242a195069bf2ec7a435952a6e10ccf11aa",
   "warnings": [],
   "tickers": [
     {
@@ -16,8 +16,8 @@
       "status": "fresh",
       "source": "download",
       "rows": 1254,
-      "as_of": "2026-09-18",
-      "age_days": 3,
+      "as_of": "2026-09-21",
+      "age_days": 1,
       "error": null
     },
     {
@@ -26,8 +26,8 @@
       "status": "fresh",
       "source": "download",
       "rows": 1254,
-      "as_of": "2026-09-18",
-      "age_days": 3,
+      "as_of": "2026-09-21",
+      "age_days": 1,
       "error": null
     },
     {
@@ -36,8 +36,8 @@
       "status": "fresh",
       "source": "download",
       "rows": 1254,
-      "as_of": "2026-09-18",
-      "age_days": 3,
+      "as_of": "2026-09-21",
+      "age_days": 1,
       "error": null
     },
     {
@@ -46,8 +46,8 @@
       "status": "fresh",
       "source": "download",
       "rows": 1254,
-      "as_of": "2026-09-18",
-      "age_days": 3,
+      "as_of": "2026-09-21",
+      "age_days": 1,
       "error": null
     },
     {
@@ -56,8 +56,8 @@
       "status": "fresh",
       "source": "download",
       "rows": 1254,
-      "as_of": "2026-09-18",
-      "age_days": 3,
+      "as_of": "2026-09-21",
+      "age_days": 1,
       "error": null
     },
     {
