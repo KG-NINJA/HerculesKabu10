@@ -3,10 +3,10 @@
 Auditable next-session stock direction research pipeline for five US and five Japanese equities.
 
 - Status: **healthy**
-- Generated: **2026-11-02T19:26:32.265358Z**
-- Expanding time-series validation accuracy: **50.3%**
+- Generated: **2026-11-03T16:59:45.821378Z**
+- Expanding time-series validation accuracy: **50.2%**
 - Persistence baseline: **50.0%**
-- Live 90-day direction accuracy: **48.6%** (393 evaluated)
+- Live 90-day direction accuracy: **48.5%** (398 evaluated)
 - Dashboard: <https://kg-ninja.github.io/HerculesKabu10/>
 
 ## Latest official forecast
@@ -18,11 +18,11 @@ Auditable next-session stock direction research pipeline for five US and five Ja
 | 7203.T | 2026-11-02 | UP | +0.21% | 63.3% | 45.0% | 53.5% | HOLD |
 | 8035.T | 2026-11-02 | DOWN | -0.84% | 66.4% | 53.5% | 46.0% | SELL |
 | 9984.T | 2026-11-02 | UP | +0.65% | 53.4% | 47.0% | 48.5% | HOLD |
-| AAPL | 2026-10-30 | UP | +0.35% | 66.4% | 55.5% | 44.0% | BUY |
-| GOOGL | 2026-10-30 | UP | +1.11% | 67.9% | 48.0% | 49.0% | HOLD |
-| MSFT | 2026-10-30 | DOWN | -0.31% | 66.4% | 48.5% | 50.0% | HOLD |
-| NVDA | 2026-10-30 | UP | +0.58% | 63.5% | 47.0% | 54.0% | HOLD |
-| TSLA | 2026-10-30 | UP | +0.05% | 50.3% | 54.5% | 51.0% | HOLD |
+| AAPL | 2026-11-02 | DOWN | -0.13% | 58.4% | 52.5% | 44.0% | HOLD |
+| GOOGL | 2026-11-02 | UP | +1.47% | 78.4% | 49.0% | 49.0% | HOLD |
+| MSFT | 2026-11-02 | DOWN | -0.05% | 55.1% | 47.0% | 50.0% | HOLD |
+| NVDA | 2026-11-02 | UP | +0.74% | 65.4% | 49.5% | 54.5% | HOLD |
+| TSLA | 2026-11-02 | UP | +0.28% | 50.9% | 54.5% | 50.5% | HOLD |
 
 ## Reliability policy
 
