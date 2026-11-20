@@ -3,26 +3,26 @@
 Auditable next-session stock direction research pipeline for five US and five Japanese equities.
 
 - Status: **healthy**
-- Generated: **2026-11-19T18:13:11.483094Z**
-- Expanding time-series validation accuracy: **49.4%**
-- Persistence baseline: **49.5%**
-- Live 90-day direction accuracy: **48.6%** (518 evaluated)
+- Generated: **2026-11-20T17:45:21.777319Z**
+- Expanding time-series validation accuracy: **48.8%**
+- Persistence baseline: **49.4%**
+- Live 90-day direction accuracy: **48.3%** (528 evaluated)
 - Dashboard: <https://kg-ninja.github.io/HerculesKabu10/>
 
 ## Latest official forecast
 
 | Ticker | Data as-of | Direction | Estimated return | Model confidence | Walk-forward | Baseline | Research signal |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| 6758.T | 2026-11-19 | DOWN | -0.32% | 60.9% | 54.5% | 52.5% | SELL |
-| 6861.T | 2026-11-19 | UP | +0.17% | 56.2% | 57.0% | 47.5% | HOLD |
-| 7203.T | 2026-11-19 | DOWN | -0.36% | 55.3% | 50.5% | 52.5% | HOLD |
-| 8035.T | 2026-11-19 | DOWN | -0.16% | 53.2% | 49.0% | 47.5% | HOLD |
-| 9984.T | 2026-11-19 | UP | +0.19% | 50.1% | 42.5% | 49.5% | HOLD |
-| AAPL | 2026-11-18 | UP | +0.30% | 62.8% | 52.0% | 42.5% | BUY |
-| GOOGL | 2026-11-18 | UP | +0.10% | 51.5% | 44.0% | 48.5% | HOLD |
-| MSFT | 2026-11-18 | UP | +0.29% | 57.3% | 50.0% | 48.5% | HOLD |
-| NVDA | 2026-11-18 | UP | +1.25% | 61.5% | 45.0% | 54.0% | HOLD |
-| TSLA | 2026-11-18 | UP | +0.14% | 55.3% | 49.0% | 52.0% | HOLD |
+| 6758.T | 2026-11-20 | DOWN | -0.13% | 50.8% | 53.0% | 52.0% | HOLD |
+| 6861.T | 2026-11-20 | DOWN | -0.11% | 50.9% | 55.5% | 48.0% | HOLD |
+| 7203.T | 2026-11-20 | DOWN | -0.34% | 57.8% | 45.0% | 53.0% | HOLD |
+| 8035.T | 2026-11-20 | UP | +0.55% | 56.5% | 48.0% | 47.0% | HOLD |
+| 9984.T | 2026-11-20 | UP | +2.29% | 66.3% | 46.0% | 49.0% | HOLD |
+| AAPL | 2026-11-19 | UP | +0.19% | 57.8% | 47.5% | 42.5% | HOLD |
+| GOOGL | 2026-11-19 | UP | +0.53% | 53.3% | 47.0% | 48.0% | HOLD |
+| MSFT | 2026-11-19 | UP | +0.65% | 71.5% | 50.5% | 48.5% | BUY |
+| NVDA | 2026-11-19 | DOWN | -0.33% | 56.4% | 45.5% | 54.0% | HOLD |
+| TSLA | 2026-11-19 | UP | +0.98% | 67.0% | 50.0% | 52.0% | HOLD |
 
 ## Reliability policy
 
